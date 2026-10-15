@@ -111,6 +111,52 @@ describe('SQLite storage', () => {
     expect((await repo.list()).map((s) => s.id)).toEqual(['ok']);
   });
 
+  test('upsertMany restores ids, updates existing rows and records snapshots in one transaction', async () => {
+    const repo = createSqliteSubscriptionRepository(db, () => 'local');
+    const local = await repo.create(input, new Date(2026, 9, 1, 10));
+    const restored = {
+      ...input,
+      id: 'from-file',
+      name: 'Spotify',
+      createdAt: '2025-03-01T10:00:00.000Z',
+      updatedAt: '2025-04-01T10:00:00.000Z',
+    };
+    const now = new Date(2026, 9, 15, 10);
+
+    const counts = await repo.upsertMany([{ ...local, amountMinor: 1499 }, restored], now);
+
+    expect(counts).toEqual({ added: 1, updated: 1 });
+    const byId = new Map((await repo.list()).map((s) => [s.id, s]));
+    expect(byId.get('local')).toMatchObject({ amountMinor: 1499, createdAt: local.createdAt, updatedAt: now.toISOString() });
+    expect(byId.get('from-file')).toEqual(restored);
+    expect((await repo.listSnapshots()).map((s) => [s.subscriptionId, s.recordedOn, s.amountMinor])).toEqual([
+      ['local', '2026-10-01', 1299],
+      ['local', '2026-10-15', 1499],
+      ['from-file', '2026-10-15', 1299],
+    ]);
+  });
+
+  test('upsertMany writes nothing when any row fails', async () => {
+    const repo = createSqliteSubscriptionRepository(db);
+    const valid = { ...input, id: 'a', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+    const broken = { ...valid, id: 'b', name: null as unknown as string };
+    await expect(repo.upsertMany([valid, broken], new Date())).rejects.toThrow();
+    expect(await repo.list()).toEqual([]);
+    expect(await repo.listSnapshots()).toEqual([]);
+  });
+
+  test('upsertMany repairs an unreadable row with the same id', async () => {
+    const repo = createSqliteSubscriptionRepository(db);
+    await db.runAsync(
+      `INSERT INTO subscriptions (id, name, amount_minor, currency, billing_interval, anchor_date, category, status, created_at, updated_at)
+       VALUES ('bad', 'Broken', 100, 'XYZ', 'monthly', '2026-02-30', 'other', 'active', '', '')`,
+      [],
+    );
+    const fixed = { ...input, id: 'bad', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+    expect(await repo.upsertMany([fixed], new Date(2026, 9, 15, 10))).toEqual({ added: 0, updated: 1 });
+    expect(await repo.list()).toEqual([{ ...fixed, updatedAt: new Date(2026, 9, 15, 10).toISOString() }]);
+  });
+
   test('settings persist and fall back to defaults', async () => {
     const settings = createSqliteSettingsRepository(db);
     expect(await settings.load()).toEqual(DEFAULT_SETTINGS);

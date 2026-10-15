@@ -17,6 +17,7 @@ Looply tracks recurring costs without accounts, a backend or bank connections. E
   - a 30-day comparison once enough history exists.
 - **Reminders:** local notifications N days before a charge, at a chosen time, in the app's language.
 - **Export:** JSON or CSV through the system share sheet.
+- **Import:** restore a JSON export on a new phone or after reinstalling, with a summary to confirm first.
 - **Reset:** erase all local data.
 - **Appearance:** light theme by default, plus dark and system.
 - **Logos:** bundled service logos (78 brands) with monogram fallbacks.
@@ -49,10 +50,10 @@ Expo Go is enough to develop and review the app on both platforms. One exception
 src/
   app/          Expo Router routes only (tabs, onboarding, subscription modals, details, privacy)
   domain/       Pure, tested business logic: calendar dates, billing, money, insights,
-                reminders planning, validation, export, list filtering, brand matching
+                reminders planning, validation, export/import, list filtering, brand matching
   data/         SQLite access: migrations, repositories (behind interfaces)
   state/        Zustand stores, startup bootstrap, service wiring
-  services/     Platform adapters: notifications, export/share, haptics
+  services/     Platform adapters: notifications, export/share, import file picker, haptics
   i18n/         i18next setup, translations (cnr/en/ru), plural rules, formatters
   theme/        Design tokens and theme provider
   components/   UI primitives (ui/) and app components
@@ -81,6 +82,15 @@ scripts/        Brand icon generator and alias config
 - Only active subscriptions count. Paused and cancelled ones are excluded from totals, schedules and reminders.
 - Editing a subscription without changing its date keeps the original anchor, so a 31st-of-month anchor survives edits.
 
+## Import (restore)
+
+Settings → Data → Import from JSON reads a file made by Export as JSON (`format: "looply-export"`, `version: 1`).
+
+- **Validation:** the file is parsed by `src/domain/importData.ts` with the same rules as the form and the database. The amount comes from `amountMinor`; the decimal `amount` and the computed `nextBillingDate` are only there for people reading the file. Unknown formats, newer versions, broken JSON and files with more than 2,000 entries are rejected as a whole. Invalid entries and repeated ids are skipped and reported, and the rest still import.
+- **Merge:** a subscription with the same id is updated, a new id is added, and identical entries are left alone. Nothing is ever deleted, so subscriptions that are not in the file stay as they are. The user sees how many will be added, updated and skipped before confirming.
+- **Writes:** all changes go through the repository in one transaction, so a failed import writes nothing. Spending snapshots are recorded the same way as for manual edits, and reminders reconcile automatically afterwards.
+- **Not restored:** app settings (language, currency, theme, reminder time) and spending history before the import. History starts again from the import date.
+
 ## Localization
 
 - Languages: Montenegrin (`cnr`, Latin script, primary and fallback), English and Russian.
@@ -101,7 +111,7 @@ Logos are a generated subset of [Simple Icons](https://simpleicons.org) (CC0). T
 
 ## Known limitations
 
-- No import or restore yet. Export is one-way.
+- Import reads only Looply JSON exports. CSV is export-only.
 - Exchange rates are not used. Multi-currency totals are shown per currency, by design.
 - Reminder delivery time is controlled by the OS. Reminders are planned for a rolling window of 120 days and the window is extended whenever the app is opened.
 - Verified on iOS Simulator (iPhone 18 Pro Max and iPhone SE 3rd gen) and an Android emulator (Pixel 8) through Expo Go. Reminder delivery on Android has not been verified, because it needs a development build.

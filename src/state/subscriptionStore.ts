@@ -12,6 +12,8 @@ interface SubscriptionState {
   update(id: string, input: SubscriptionInput): Promise<Subscription>;
   setStatus(id: string, status: SubscriptionStatus): Promise<void>;
   remove(id: string): Promise<void>;
+  /** Restores subscriptions from an import; same id updates, new id adds. */
+  importMany(subscriptions: readonly Subscription[]): Promise<{ added: number; updated: number }>;
   clear(): void;
 }
 
@@ -60,6 +62,14 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => {
       await getServices().subscriptions.remove(id, new Date());
       set({ subscriptions: get().subscriptions.filter((s) => s.id !== id) });
       await refreshSnapshots();
+    },
+
+    async importMany(subscriptions) {
+      const repository = getServices().subscriptions;
+      const counts = await repository.upsertMany(subscriptions, new Date());
+      const [stored, snapshots] = await Promise.all([repository.list(), repository.listSnapshots()]);
+      set({ subscriptions: stored.sort(byName), snapshots });
+      return counts;
     },
 
     clear() {

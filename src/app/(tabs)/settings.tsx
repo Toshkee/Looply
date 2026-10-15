@@ -10,12 +10,14 @@ import { ListRow, ListSection, SwitchRow } from '@/components/ui/ListRow';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { CURRENCY_CODES, type CurrencyCode } from '@/domain/currency';
+import { parseImport, planImport, type ImportFileError } from '@/domain/importData';
 import { REMINDER_HOURS, type AppSettings, type ThemePreference } from '@/domain/settings';
 import { REMINDER_OPTIONS } from '@/domain/subscription';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
 import { APP_LANGUAGES, LANGUAGE_NATIVE_NAMES, type AppLanguage } from '@/i18n/languages';
 import { shareExport, type ExportFormat } from '@/services/exportService';
 import { haptics } from '@/services/haptics';
+import { ImportFileTooLargeError, pickImportFile } from '@/services/importService';
 import { cancelAllReminders } from '@/services/notifications';
 import { resetAllData } from '@/state/bootstrap';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -24,6 +26,13 @@ import { spacing } from '@/theme/tokens';
 
 type Sheet = 'language' | 'currency' | 'defaultReminder' | 'reminderTime' | null;
 
+const IMPORT_ERROR_KEYS = {
+  invalidJson: 'settings.importInvalidFile',
+  unknownFormat: 'settings.importInvalidFile',
+  unsupportedVersion: 'settings.importUnsupportedVersion',
+  tooManyEntries: 'settings.importTooLarge',
+} as const satisfies Record<ImportFileError, string>;
+
 const clock = (hour: number, minute: number) => `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
 export default function SettingsScreen() {
@@ -31,9 +40,10 @@ export default function SettingsScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);
+  const importMany = useSubscriptionStore((s) => s.importMany);
   const permission = useNotificationPermission();
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [exporting, setExporting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const save = (patch: Partial<AppSettings>) => update(patch).catch(() => Alert.alert(t('errors.generic')));
 
@@ -69,14 +79,66 @@ export default function SettingsScreen() {
       Alert.alert(t('settings.exportEmpty'));
       return;
     }
-    setExporting(true);
+    setBusy(true);
     try {
       await shareExport(format, subscriptions, settings.currency, format === 'json' ? t('settings.exportJson') : t('settings.exportCsv'));
     } catch {
       Alert.alert(t('settings.exportError'));
     } finally {
-      setExporting(false);
+      setBusy(false);
     }
+  };
+
+  const runImport = async () => {
+    let text: string | null;
+    setBusy(true);
+    try {
+      text = await pickImportFile();
+    } catch (error) {
+      Alert.alert(error instanceof ImportFileTooLargeError ? t('settings.importTooLarge') : t('settings.importError'));
+      return;
+    } finally {
+      setBusy(false);
+    }
+    if (text === null) return;
+
+    const parsed = parseImport(text, new Date());
+    if (!parsed.ok) {
+      Alert.alert(t(IMPORT_ERROR_KEYS[parsed.error]));
+      return;
+    }
+    if (parsed.subscriptions.length === 0) {
+      Alert.alert(t('settings.importNothing'));
+      return;
+    }
+    const plan = planImport(parsed.subscriptions, subscriptions);
+    const changes = [...plan.toAdd, ...plan.toUpdate];
+    if (changes.length === 0) {
+      Alert.alert(t('settings.importUpToDate'));
+      return;
+    }
+
+    const summary = [
+      t('settings.importAdded', { n: plan.toAdd.length }),
+      t('settings.importUpdated', { n: plan.toUpdate.length }),
+      plan.unchanged > 0 ? t('settings.importUnchanged', { n: plan.unchanged }) : null,
+      parsed.skipped.length > 0 ? t('settings.importSkipped', { n: parsed.skipped.length }) : null,
+    ].filter(Boolean);
+    Alert.alert(t('settings.importTitle'), `${summary.join('\n')}\n\n${t('settings.importNote')}`, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.importConfirm'),
+        onPress: async () => {
+          try {
+            await importMany(changes);
+            haptics.success();
+            Alert.alert(t('settings.importDone'));
+          } catch {
+            Alert.alert(t('settings.importError'));
+          }
+        },
+      },
+    ]);
   };
 
   const confirmReset = () =>
@@ -165,8 +227,9 @@ export default function SettingsScreen() {
       </ListSection>
 
       <ListSection title={t('settings.data')} footer={t('settings.exportHint')}>
-        <ListRow icon="document-text-outline" title={t('settings.exportJson')} onPress={exporting ? undefined : () => runExport('json')} />
-        <ListRow icon="grid-outline" title={t('settings.exportCsv')} onPress={exporting ? undefined : () => runExport('csv')} />
+        <ListRow icon="document-text-outline" title={t('settings.exportJson')} onPress={busy ? undefined : () => runExport('json')} />
+        <ListRow icon="grid-outline" title={t('settings.exportCsv')} onPress={busy ? undefined : () => runExport('csv')} />
+        <ListRow icon="download-outline" title={t('settings.importJson')} onPress={busy ? undefined : () => void runImport()} />
         <ListRow icon="trash-outline" title={t('settings.resetData')} onPress={confirmReset} destructive showChevron={false} />
       </ListSection>
 

@@ -21,6 +21,11 @@ export interface SubscriptionRepository {
   create(input: SubscriptionInput, now: Date): Promise<Subscription>;
   update(id: string, input: SubscriptionInput, now: Date): Promise<Subscription>;
   remove(id: string, now: Date): Promise<void>;
+  /**
+   * Restores subscriptions with their own ids in one transaction: an existing
+   * id is updated, a new one is inserted. Nothing is deleted.
+   */
+  upsertMany(subscriptions: readonly Subscription[], now: Date): Promise<{ added: number; updated: number }>;
 }
 
 export class SubscriptionNotFoundError extends Error {
@@ -116,6 +121,10 @@ export function createSqliteSubscriptionRepository(
   generateId: () => string = createId,
 ): SubscriptionRepository {
   const findRow = (id: string) => db.getFirstAsync<SubscriptionRow>('SELECT * FROM subscriptions WHERE id = ?', [id]);
+  const find = async (id: string) => {
+    const row = await findRow(id);
+    return row ? toSubscription(row) : null;
+  };
 
   const recordSnapshot = (
     subscriptionId: string,
@@ -142,6 +151,36 @@ export function createSqliteSubscriptionRepository(
     input.reminderDaysBefore,
   ];
 
+  const insert = (subscription: Subscription) =>
+    db.runAsync(
+      `INSERT INTO subscriptions
+         (name, amount_minor, currency, billing_interval, anchor_date, category, status, url, notes,
+          reminder_days_before, id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [...values(subscription), subscription.id, subscription.createdAt, subscription.updatedAt],
+    );
+
+  /**
+   * Writes `next` over the stored row; a snapshot is kept only when spending
+   * changed (`existing` is null for an unreadable row). Call inside a transaction.
+   */
+  const replace = async (existing: Subscription | null, next: Subscription, now: Date) => {
+    await db.runAsync(
+      `UPDATE subscriptions SET
+         name = ?, amount_minor = ?, currency = ?, billing_interval = ?, anchor_date = ?, category = ?,
+         status = ?, url = ?, notes = ?, reminder_days_before = ?, created_at = ?, updated_at = ?
+       WHERE id = ?`,
+      [...values(next), next.createdAt, next.updatedAt, next.id],
+    );
+    const spendingChanged =
+      !existing ||
+      existing.amountMinor !== next.amountMinor ||
+      existing.currency !== next.currency ||
+      existing.interval !== next.interval ||
+      existing.status !== next.status;
+    if (spendingChanged) await recordSnapshot(next.id, now, next);
+  };
+
   return {
     async list() {
       const rows = await db.getAllAsync<SubscriptionRow>('SELECT * FROM subscriptions ORDER BY name COLLATE NOCASE', []);
@@ -157,45 +196,43 @@ export function createSqliteSubscriptionRepository(
       const timestamp = now.toISOString();
       const subscription: Subscription = { ...input, id: generateId(), createdAt: timestamp, updatedAt: timestamp };
       await db.withTransactionAsync(async () => {
-        await db.runAsync(
-          `INSERT INTO subscriptions
-             (name, amount_minor, currency, billing_interval, anchor_date, category, status, url, notes,
-              reminder_days_before, id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [...values(input), subscription.id, timestamp, timestamp],
-        );
+        await insert(subscription);
         await recordSnapshot(subscription.id, now, input);
       });
       return subscription;
     },
 
     async update(id, input, now) {
-      const existingRow = await findRow(id);
-      const existing = existingRow ? toSubscription(existingRow) : null;
+      const existing = await find(id);
       if (!existing) throw new SubscriptionNotFoundError();
-      const timestamp = now.toISOString();
-      const updated: Subscription = { ...input, id, createdAt: existing.createdAt, updatedAt: timestamp };
-      const spendingChanged =
-        existing.amountMinor !== input.amountMinor ||
-        existing.currency !== input.currency ||
-        existing.interval !== input.interval ||
-        existing.status !== input.status;
-      await db.withTransactionAsync(async () => {
-        await db.runAsync(
-          `UPDATE subscriptions SET
-             name = ?, amount_minor = ?, currency = ?, billing_interval = ?, anchor_date = ?, category = ?,
-             status = ?, url = ?, notes = ?, reminder_days_before = ?, updated_at = ?
-           WHERE id = ?`,
-          [...values(input), timestamp, id],
-        );
-        if (spendingChanged) await recordSnapshot(id, now, input);
-      });
+      const updated: Subscription = { ...input, id, createdAt: existing.createdAt, updatedAt: now.toISOString() };
+      await db.withTransactionAsync(() => replace(existing, updated, now));
       return updated;
     },
 
+    async upsertMany(subscriptions, now) {
+      const counts = { added: 0, updated: 0 };
+      await db.withTransactionAsync(async () => {
+        for (const subscription of subscriptions) {
+          const row = await findRow(subscription.id);
+          if (row) {
+            // An unreadable stored row is repaired by the file's valid copy.
+            const existing = toSubscription(row);
+            const next = { ...subscription, createdAt: existing?.createdAt ?? subscription.createdAt, updatedAt: now.toISOString() };
+            await replace(existing, next, now);
+            counts.updated += 1;
+          } else {
+            await insert(subscription);
+            await recordSnapshot(subscription.id, now, subscription);
+            counts.added += 1;
+          }
+        }
+      });
+      return counts;
+    },
+
     async remove(id, now) {
-      const existingRow = await findRow(id);
-      const existing = existingRow ? toSubscription(existingRow) : null;
+      const existing = await find(id);
       if (!existing) return;
       await db.withTransactionAsync(async () => {
         await db.runAsync('DELETE FROM subscriptions WHERE id = ?', [id]);
