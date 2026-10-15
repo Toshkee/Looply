@@ -4,6 +4,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { findBrand } from '@/domain/brands';
 import { CURRENCY_CODES } from '@/domain/currency';
 import { formatAmountForInput } from '@/domain/money';
 import { matchPresets, type ServicePreset } from '@/domain/presets';
@@ -27,6 +28,7 @@ import { DateField } from './form/DateField';
 import { fieldErrorMessage } from './form/fieldErrors';
 import { FormSection } from './form/FormSection';
 import { SelectSheet } from './SelectSheet';
+import { SubscriptionAvatar } from './SubscriptionAvatar';
 import { AppText } from './ui/AppText';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -151,6 +153,13 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
               onSubmitEditing={() => amountRef.current?.focus()}
               onFocus={() => setNameFocused(true)}
               onBlur={() => setNameFocused(false)}
+              trailing={
+                values.name.trim() !== '' ? (
+                  <View style={styles.namePreview}>
+                    <SubscriptionAvatar name={values.name} category={values.category} size={32} />
+                  </View>
+                ) : null
+              }
             />
             {suggestions.length > 0 ? (
               <View style={styles.suggestions}>
@@ -159,7 +168,13 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
                 </AppText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" contentContainerStyle={styles.suggestionRow}>
                   {suggestions.map((preset) => (
-                    <Chip key={preset.name} label={preset.name} icon={CATEGORY_ICONS[preset.category]} onPress={() => applyPreset(preset)} />
+                    <Chip
+                      key={preset.name}
+                      label={preset.name}
+                      icon={CATEGORY_ICONS[preset.category]}
+                      leading={findBrand(preset.name) ? <SubscriptionAvatar name={preset.name} category={preset.category} size={22} shape="circle" /> : undefined}
+                      onPress={() => applyPreset(preset)}
+                    />
                   ))}
                 </ScrollView>
               </View>
@@ -304,4 +319,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   more: { gap: spacing.md },
+  namePreview: { paddingRight: spacing.xs },
 });

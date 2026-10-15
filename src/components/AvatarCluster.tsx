@@ -5,9 +5,7 @@ import { monthlyEstimateMinor } from '@/domain/billing';
 import type { Subscription } from '@/domain/subscription';
 import { useTheme } from '@/theme/ThemeProvider';
 
-import { categoryHue, withAlpha } from './categoryVisuals';
-import { monogram } from './SubscriptionAvatar';
-import { AppText } from './ui/AppText';
+import { SubscriptionAvatar } from './SubscriptionAvatar';
 
 /**
  * Hand-placed, non-overlapping slots in a 150×110 design box: the largest
@@ -36,7 +34,7 @@ const DOTS = [
  * carries the information.
  */
 export function AvatarCluster({ subscriptions }: { subscriptions: readonly Subscription[] }) {
-  const { scheme, colors } = useTheme();
+  const { colors } = useTheme();
   const [width, setWidth] = useState(0);
   const ranked = [...subscriptions].sort(
     (a, b) => monthlyEstimateMinor(b.amountMinor, b.interval) - monthlyEstimateMinor(a.amountMinor, a.interval),
@@ -57,34 +55,16 @@ export function AvatarCluster({ subscriptions }: { subscriptions: readonly Subsc
           {bubbles.map((subscription, index) => {
             const slot = BUBBLES[index]!;
             const r = slot.r * scale;
-            const hue = categoryHue(subscription.category, scheme);
             return (
-              <Bubble key={subscription.id} delay={index * 45} style={{ left: slot.x * scale - r, top: slot.y * scale - r }}>
-                <View
-                  style={[
-                    styles.bubble,
-                    {
-                      width: r * 2,
-                      height: r * 2,
-                      borderRadius: r,
-                      backgroundColor: index === 0 ? hue : withAlpha(hue, scheme === 'dark' ? 0.32 : 0.2),
-                      borderColor: colors.surface,
-                    },
-                  ]}
-                >
-                  {r >= 12 ? (
-                    <AppText
-                      maxFontSizeMultiplier={1}
-                      style={{
-                        fontSize: r * 0.8,
-                        lineHeight: r * 1.0,
-                        fontWeight: '700',
-                        color: index === 0 ? (scheme === 'dark' ? '#17140F' : '#FFFFFF') : hue,
-                      }}
-                    >
-                      {monogram(subscription.name)}
-                    </AppText>
-                  ) : null}
+              <Bubble key={subscription.id} delay={index * 45} style={{ left: slot.x * scale - r - 2, top: slot.y * scale - r - 2 }}>
+                <View style={[styles.ring, { borderRadius: r + 2, borderColor: colors.surface }]}>
+                  <SubscriptionAvatar
+                    name={subscription.name}
+                    category={subscription.category}
+                    size={r * 2}
+                    shape="circle"
+                    solid={index === 0}
+                  />
                 </View>
               </Bubble>
             );
@@ -115,6 +95,6 @@ function Bubble({ delay, style, children }: { delay: number; style: object; chil
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   absolute: { position: 'absolute' },
-  bubble: { alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
+  ring: { borderWidth: 2 },
   dot: { width: 8, height: 8, borderRadius: 4 },
 });

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { haptics } from '@/services/haptics';
@@ -12,10 +13,12 @@ interface ChipProps {
   selected?: boolean;
   onPress: () => void;
   icon?: IconName;
+  /** Custom leading content (e.g. a logo); takes precedence over `icon`. */
+  leading?: ReactNode;
   accessibilityLabel?: string;
 }
 
-export function Chip({ label, selected = false, onPress, icon, accessibilityLabel }: ChipProps) {
+export function Chip({ label, selected = false, onPress, icon, leading, accessibilityLabel }: ChipProps) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -34,7 +37,7 @@ export function Chip({ label, selected = false, onPress, icon, accessibilityLabe
         },
       ]}
     >
-      {icon ? <Icon name={icon} size={16} color={selected ? colors.onPrimary : colors.textSecondary} /> : null}
+      {leading ?? (icon ? <Icon name={icon} size={16} color={selected ? colors.onPrimary : colors.textSecondary} /> : null)}
       <AppText variant="label" tone={selected ? 'onPrimary' : 'primary'} numberOfLines={1}>
         {label}
       </AppText>

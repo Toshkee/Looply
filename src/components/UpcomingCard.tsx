@@ -7,19 +7,19 @@ import { useFormatters } from '@/hooks/useFormatters';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, spacing } from '@/theme/tokens';
 
-import { categoryHue, withAlpha } from './categoryVisuals';
-import { SubscriptionAvatar } from './SubscriptionAvatar';
+import { withAlpha } from './categoryVisuals';
+import { SubscriptionAvatar, useSubscriptionTint } from './SubscriptionAvatar';
 import { AppText } from './ui/AppText';
 import { PressableScale } from './ui/PressableScale';
 
 export const UPCOMING_CARD_WIDTH = 156;
 
-/** A payment in the horizontal "Up next" rail, softly tinted by category. */
+/** A payment in the horizontal "Up next" rail, softly tinted by its brand or category color. */
 export function UpcomingCard({ payment, today }: { payment: ScheduledPayment; today: ISODate }) {
   const { colors, shadows, scheme } = useTheme();
   const format = useFormatters();
   const { subscription, date } = payment;
-  const hue = categoryHue(subscription.category, scheme);
+  const tint = useSubscriptionTint(subscription.name, subscription.category);
   const soon = diffDays(today, date) <= 1;
   const amount = format.money(subscription.amountMinor, subscription.currency);
   const when = format.relativeDay(date, today);
@@ -30,7 +30,7 @@ export function UpcomingCard({ payment, today }: { payment: ScheduledPayment; to
       accessibilityLabel={`${subscription.name}, ${amount}, ${when}`}
       style={[styles.card, { backgroundColor: colors.surface, boxShadow: shadows.card }]}
     >
-      <View style={[StyleSheet.absoluteFill, styles.tint, { backgroundColor: withAlpha(hue, scheme === 'dark' ? 0.16 : 0.08) }]} />
+      <View style={[StyleSheet.absoluteFill, styles.tint, { backgroundColor: withAlpha(tint, scheme === 'dark' ? 0.2 : 0.09) }]} />
       <View style={styles.top}>
         <SubscriptionAvatar name={subscription.name} category={subscription.category} size={40} shape="circle" solid />
         <AppText variant="amount" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.amount}>
