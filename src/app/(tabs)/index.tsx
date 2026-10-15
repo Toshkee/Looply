@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AvatarCluster } from '@/components/AvatarCluster';
@@ -144,12 +144,19 @@ export default function DashboardScreen() {
             </Card>
           ) : (
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <AppText variant="heading" accessibilityRole="header">
-                  {t('home.upNext')}
-                </AppText>
+              <View>
+                <View style={styles.sectionHeader}>
+                  <AppText variant="heading" accessibilityRole="header">
+                    {t('home.upNext')}
+                  </AppText>
+                  <Pressable onPress={() => router.navigate('/calendar')} hitSlop={12} accessibilityRole="link">
+                    <AppText variant="bodyStrong" tone="accent">
+                      {t('common.seeAll')}
+                    </AppText>
+                  </Pressable>
+                </View>
                 {data.upcomingSums.length > 0 ? (
-                  <AppText variant="caption" tone="secondary" numberOfLines={2} style={styles.sectionMeta}>
+                  <AppText variant="caption" tone="secondary">
                     {t('home.upNextTotal', {
                       amount: data.upcomingSums.map((sum) => format.money(sum.amountMinor, sum.currency)).join(' + '),
                     })}
@@ -218,7 +225,6 @@ const styles = StyleSheet.create({
   otherRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
   section: { gap: spacing.md },
   sectionHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.md },
-  sectionMeta: { flexShrink: 1, textAlign: 'right' },
   rail: { marginHorizontal: -GUTTER, marginVertical: -spacing.md },
   railContent: { paddingHorizontal: GUTTER, paddingVertical: spacing.md, gap: spacing.md },
   noUpcoming: { gap: spacing.xs },

@@ -1,5 +1,5 @@
 import { Children, Fragment, isValidElement, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { spacing } from '@/theme/tokens';
@@ -75,6 +75,54 @@ export function ListRow({
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfacePressed }]}
     >
       {content}
+    </Pressable>
+  );
+}
+
+/** A row whose whole surface toggles a switch (one accessible control, not two). */
+export function SwitchRow({
+  title,
+  subtitle,
+  icon,
+  value,
+  onValueChange,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: IconName;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={() => onValueChange(!value)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={title}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfacePressed }]}
+    >
+      {icon ? (
+        <View style={[styles.iconTile, { backgroundColor: colors.surfaceMuted }]}>
+          <Icon name={icon} size={18} color={colors.text} />
+        </View>
+      ) : null}
+      <View style={styles.texts}>
+        <AppText variant="body">{title}</AppText>
+        {subtitle ? (
+          <AppText variant="caption" tone="secondary">
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ true: colors.accent, false: colors.surfaceMuted }}
+        ios_backgroundColor={colors.surfaceMuted}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
     </Pressable>
   );
 }

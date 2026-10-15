@@ -34,6 +34,11 @@ export default function TabsLayout() {
         name="subscriptions"
         options={{ title: t('tabs.subscriptions'), tabBarIcon: tabIcon('albums', 'albums-outline') }}
       />
+      <Tabs.Screen name="calendar" options={{ title: t('tabs.calendar'), tabBarIcon: tabIcon('calendar', 'calendar-outline') }} />
+      <Tabs.Screen
+        name="insights"
+        options={{ title: t('tabs.insights'), tabBarIcon: tabIcon('pie-chart', 'pie-chart-outline') }}
+      />
       <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('settings', 'settings-outline') }} />
     </Tabs>
   );

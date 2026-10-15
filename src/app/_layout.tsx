@@ -9,12 +9,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { useReminderNavigation, useReminderSync } from '@/hooks/useReminderSync';
+import { configureNotificationHandling } from '@/services/notifications';
 import { bootstrapApp } from '@/state/bootstrap';
 import { useSettingsStore } from '@/state/settingsStore';
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { GUTTER, spacing } from '@/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+configureNotificationHandling();
 
 type StartupState = 'loading' | 'ready' | 'error';
 
@@ -57,6 +60,8 @@ export default function RootLayout() {
 function RootNavigator() {
   const { colors, scheme } = useTheme();
   const onboarded = useSettingsStore((s) => s.settings.onboardingCompleted);
+  useReminderSync(onboarded);
+  useReminderNavigation(onboarded);
 
   const pushed = {
     headerShown: true,

@@ -26,17 +26,21 @@ export interface Formatters {
   /** "Today", "Tomorrow", "In 3 days" for the coming week, otherwise a short date. */
   relativeDay(date: ISODate, today: ISODate): string;
   weekdayMin(isoWeekdayIndex: number): string;
+  weekdayShort(date: ISODate): string;
   percent(share: number): string;
 }
 
 export function createFormatters(t: TFunction, language: AppLanguage, deviceLocales: readonly DeviceLocale[]): Formatters {
   const locale = formattingLocale(language, deviceLocales);
-  const list = (key: 'dates.months' | 'dates.monthsInDate' | 'dates.monthsShort' | 'dates.weekdays' | 'dates.weekdaysMin') =>
+  const list = (
+    key: 'dates.months' | 'dates.monthsInDate' | 'dates.monthsShort' | 'dates.weekdays' | 'dates.weekdaysShort' | 'dates.weekdaysMin',
+  ) =>
     t(key, { returnObjects: true }) as unknown as readonly string[];
   const months = list('dates.months');
   const monthsInDate = list('dates.monthsInDate');
   const monthsShort = list('dates.monthsShort');
   const weekdays = list('dates.weekdays');
+  const weekdaysShort = list('dates.weekdaysShort');
   const weekdaysMin = list('dates.weekdaysMin');
 
   const date = (value: ISODate, style: DateStyle = 'long'): string => {
@@ -83,6 +87,7 @@ export function createFormatters(t: TFunction, language: AppLanguage, deviceLoca
       return date(value, 'short');
     },
     weekdayMin: (index) => weekdaysMin[index - 1] ?? '',
+    weekdayShort: (value) => weekdaysShort[isoWeekday(value) - 1] ?? '',
     percent: (share) => {
       const value = Math.round(share * 100);
       return t('insights.shareOfTotal', { percent: percentFormat ? percentFormat.format(value) : String(value) });

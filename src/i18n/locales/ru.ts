@@ -243,6 +243,10 @@ const ru: Translation = {
     emptyTitle: 'Пока нечего анализировать',
     emptyBody: 'Добавьте активные подписки, чтобы увидеть, на что уходят деньги.',
     shareOfTotal: '{{percent}}%',
+    upcomingMonths: 'Ближайшие месяцы',
+    upcomingMonthsNote: 'Фактические списания по месяцам, по графику.',
+    perMonth: '{{amount}} в месяц',
+    renewsOn: 'Продление {{date}}',
   },
   settings: {
     title: 'Настройки',

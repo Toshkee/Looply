@@ -55,5 +55,5 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, gap: spacing.xl },
   header: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginTop: spacing.sm },
   titles: { flex: 1, gap: 2 },
-  statusBarScrim: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0.97 },
+  statusBarScrim: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

@@ -247,6 +247,10 @@ const cnr = {
     emptyTitle: 'Još nema podataka za analizu',
     emptyBody: 'Dodajte aktivne pretplate da biste vidjeli raspodjelu troškova.',
     shareOfTotal: '{{percent}}%',
+    upcomingMonths: 'Naredni mjeseci',
+    upcomingMonthsNote: 'Stvarne naplate po mjesecima, prema rasporedu.',
+    perMonth: '{{amount}} mjesečno',
+    renewsOn: 'Obnova {{date}}',
   },
   settings: {
     title: 'Podešavanja',

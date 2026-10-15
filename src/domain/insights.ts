@@ -1,5 +1,5 @@
-import { annualEstimateMinor, isBillable, monthlyEstimateMinor, nextBillingDate } from './billing';
-import { addDays, type ISODate } from './calendarDate';
+import { annualEstimateMinor, isBillable, monthlyEstimateMinor, nextBillingDate, scheduledPayments } from './billing';
+import { addDays, addMonths, endOfMonth, startOfMonth, type ISODate } from './calendarDate';
 import type { CurrencyCode } from './currency';
 import type { CategoryId, Subscription, SubscriptionSnapshot } from './subscription';
 
@@ -170,4 +170,36 @@ export function compareWithPast(
     currentMonthlyMinor,
     differenceMinor: currentMonthlyMinor - previousMonthlyMinor,
   };
+}
+
+export interface MonthTotal {
+  /** First day of the month. */
+  month: ISODate;
+  amountMinor: number;
+  count: number;
+}
+
+/**
+ * Actual scheduled charges per calendar month for one currency, starting with
+ * the month containing `from`. Unlike normalized estimates these show the real
+ * shape of spending, including lumpy annual renewals.
+ */
+export function scheduledMonthTotals(
+  subscriptions: readonly Subscription[],
+  currency: CurrencyCode,
+  from: ISODate,
+  months: number,
+): MonthTotal[] {
+  const inCurrency = subscriptions.filter((s) => s.currency === currency);
+  const result: MonthTotal[] = [];
+  for (let i = 0; i < months; i += 1) {
+    const month = addMonths(startOfMonth(from), i);
+    const payments = scheduledPayments(inCurrency, month, endOfMonth(month));
+    result.push({
+      month,
+      amountMinor: payments.reduce((sum, p) => sum + p.subscription.amountMinor, 0),
+      count: payments.length,
+    });
+  }
+  return result;
 }

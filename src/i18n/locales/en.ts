@@ -243,6 +243,10 @@ const en: Translation = {
     emptyTitle: 'Nothing to analyse yet',
     emptyBody: 'Add active subscriptions to see where your money goes.',
     shareOfTotal: '{{percent}}%',
+    upcomingMonths: 'Coming months',
+    upcomingMonthsNote: 'Actual charges per month, by schedule.',
+    perMonth: '{{amount}} per month',
+    renewsOn: 'Renews {{date}}',
   },
   settings: {
     title: 'Settings',

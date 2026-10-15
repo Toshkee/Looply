@@ -5,6 +5,7 @@ import {
   monthlyTotalsAsOf,
   mostExpensive,
   overlapHints,
+  scheduledMonthTotals,
   upcomingLongRenewals,
 } from '../insights';
 import type { SubscriptionSnapshot } from '../subscription';
@@ -97,5 +98,21 @@ describe('spending history', () => {
     });
     expect(compareWithPast(history, 1200, 'EUR', iso('2026-08-20'))).toBeNull();
     expect(compareWithPast([], 0, 'EUR', iso('2026-10-15'))).toBeNull();
+  });
+});
+
+describe('scheduled month totals', () => {
+  test('sums actual charges per calendar month, including annual renewals', () => {
+    const subs = [
+      makeSubscription({ amountMinor: 1000, anchorDate: iso('2026-10-20') }),
+      makeSubscription({ amountMinor: 12000, interval: 'annual', anchorDate: iso('2026-12-05') }),
+      makeSubscription({ amountMinor: 500, interval: 'weekly', anchorDate: iso('2026-10-01'), status: 'paused' }),
+      makeSubscription({ amountMinor: 999, currency: 'USD', anchorDate: iso('2026-10-20') }),
+    ];
+    expect(scheduledMonthTotals(subs, 'EUR', iso('2026-10-15'), 3)).toEqual([
+      { month: '2026-10-01', amountMinor: 1000, count: 1 },
+      { month: '2026-11-01', amountMinor: 1000, count: 1 },
+      { month: '2026-12-01', amountMinor: 13000, count: 2 },
+    ]);
   });
 });

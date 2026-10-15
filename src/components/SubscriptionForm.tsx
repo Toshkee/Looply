@@ -18,6 +18,7 @@ import {
 import { validateSubscriptionForm, type FormErrors, type SubscriptionFormValues } from '@/domain/validation';
 import { useFormatters } from '@/hooks/useFormatters';
 import { haptics } from '@/services/haptics';
+import { requestPermission } from '@/services/notifications';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GUTTER, spacing } from '@/theme/tokens';
@@ -101,6 +102,10 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
       await onSubmit(result.input, { dateChanged });
       haptics.success();
       router.back();
+      // Ask for notification permission in context, the first time a reminder is actually set.
+      if (remindersEnabled && result.input.reminderDaysBefore !== null && result.input.status === 'active') {
+        requestPermission().catch(() => undefined);
+      }
     } catch {
       setSaving(false);
       Alert.alert(t('form.saveError'));
