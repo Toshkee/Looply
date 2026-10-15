@@ -1,10 +1,9 @@
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { currentLanguage } from '@/i18n';
-import { REMINDER_KIND, syncReminders } from '@/services/notifications';
+import { listenForReminderTaps, syncReminders } from '@/services/notifications';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 
@@ -41,19 +40,15 @@ export function useReminderSync(enabled: boolean): void {
   }, [enabled, subscriptions, remindersEnabled, reminderHour, reminderMinute, language]);
 }
 
-/** Opens the subscription a tapped reminder refers to. */
+/** Opens the subscription a tapped reminder refers to (each tap handled once). */
 export function useReminderNavigation(enabled: boolean): void {
-  const response = Notifications.useLastNotificationResponse();
-  const handled = useRef<string | null>(null);
-
   useEffect(() => {
-    if (!enabled || !response) return;
-    const { identifier, content } = response.notification.request;
-    if (handled.current === identifier) return;
-    handled.current = identifier;
-    const data = content.data as { kind?: unknown; subscriptionId?: unknown } | null;
-    if (data?.kind === REMINDER_KIND && typeof data.subscriptionId === 'string') {
-      router.push(`/subscription/${data.subscriptionId}`);
-    }
-  }, [enabled, response]);
+    if (!enabled) return;
+    const handled = new Set<string>();
+    return listenForReminderTaps((subscriptionId, responseId) => {
+      if (handled.has(responseId)) return;
+      handled.add(responseId);
+      router.push(`/subscription/${subscriptionId}`);
+    });
+  }, [enabled]);
 }

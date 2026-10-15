@@ -1,5 +1,5 @@
 import { getLocales } from 'expo-localization';
-import * as Notifications from 'expo-notifications';
+import type { NotificationContentInput, NotificationPermissionsStatus, NotificationResponse } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { AppSettings } from '@/domain/settings';
@@ -8,6 +8,8 @@ import { planReminders, type PlannedReminder } from '@/domain/reminders';
 import i18n from '@/i18n';
 import { createFormatters } from '@/i18n/format';
 import type { AppLanguage } from '@/i18n/languages';
+
+import { getNotificationsModule } from './notificationsModule';
 
 /**
  * Local payment reminders.
@@ -21,10 +23,11 @@ import type { AppLanguage } from '@/i18n/languages';
 const CHANNEL_ID = 'payment-reminders';
 export const REMINDER_KIND = 'payment-reminder';
 
-export type PermissionState = 'granted' | 'denied' | 'undetermined';
+/** `unavailable`: notifications cannot run in this environment (e.g. Expo Go on Android). */
+export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
 export function configureNotificationHandling(): void {
-  Notifications.setNotificationHandler({
+  getNotificationsModule()?.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
       shouldShowList: true,
@@ -34,20 +37,24 @@ export function configureNotificationHandling(): void {
   });
 }
 
-function toState(status: Notifications.NotificationPermissionsStatus): PermissionState {
+function toState(status: NotificationPermissionsStatus): PermissionState {
+  const Notifications = getNotificationsModule();
   if (status.granted) return 'granted';
-  if (status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return 'granted';
+  if (Notifications && status.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return 'granted';
   return status.canAskAgain ? 'undetermined' : 'denied';
 }
 
 export async function getPermissionState(): Promise<PermissionState> {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return 'unavailable';
   return toState(await Notifications.getPermissionsAsync());
 }
 
 /** Asks only when the system still allows asking; never re-prompts after a denial. */
 export async function requestPermission(): Promise<PermissionState> {
+  const Notifications = getNotificationsModule();
   const current = await getPermissionState();
-  if (current !== 'undetermined') return current;
+  if (!Notifications || current !== 'undetermined') return current;
   return toState(await Notifications.requestPermissionsAsync());
 }
 
@@ -57,7 +64,7 @@ export interface ReminderSyncInput {
   language: AppLanguage;
 }
 
-function buildContent(reminder: PlannedReminder, language: AppLanguage): Notifications.NotificationContentInput {
+function buildContent(reminder: PlannedReminder, language: AppLanguage): NotificationContentInput {
   const t = i18n.getFixedT(language);
   const format = createFormatters(t, language, getLocales());
   const { subscription, paymentDate, daysBefore } = reminder;
@@ -77,6 +84,8 @@ function buildContent(reminder: PlannedReminder, language: AppLanguage): Notific
 }
 
 async function reconcile({ subscriptions, settings, language }: ReminderSyncInput): Promise<number> {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return 0;
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!settings.remindersEnabled) return 0;
   if ((await getPermissionState()) !== 'granted') return 0;
@@ -120,5 +129,27 @@ export function syncReminders(input: ReminderSyncInput): Promise<void> {
 }
 
 export async function cancelAllReminders(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+  await getNotificationsModule()?.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+}
+
+/** Subscription id a tapped reminder refers to, if any. */
+function subscriptionIdFrom(response: NotificationResponse | null): string | null {
+  const data = response?.notification.request.content.data as { kind?: unknown; subscriptionId?: unknown } | undefined;
+  return data?.kind === REMINDER_KIND && typeof data.subscriptionId === 'string' ? data.subscriptionId : null;
+}
+
+/**
+ * Calls `onOpen` for the reminder that launched the app and for every
+ * reminder tapped afterwards. Returns an unsubscribe function.
+ */
+export function listenForReminderTaps(onOpen: (subscriptionId: string, responseId: string) => void): () => void {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return () => undefined;
+  const handle = (response: NotificationResponse | null) => {
+    const id = subscriptionIdFrom(response);
+    if (response && id) onOpen(id, response.notification.request.identifier);
+  };
+  Notifications.getLastNotificationResponseAsync().then(handle).catch(() => undefined);
+  const subscription = Notifications.addNotificationResponseReceivedListener(handle);
+  return () => subscription.remove();
 }

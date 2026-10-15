@@ -40,12 +40,19 @@ export default function SettingsScreen() {
   const reminderLabel = (days: number | null) =>
     days === null ? t('reminder.off') : days === 0 ? t('reminder.sameDay') : t('reminder.daysBefore', { count: days });
 
-  const permissionLabel =
-    permission.state === 'granted'
-      ? t('settings.permissionGranted')
+  const permissionLabel = {
+    granted: t('settings.permissionGranted'),
+    denied: t('settings.permissionDenied'),
+    undetermined: t('settings.permissionUndetermined'),
+    unavailable: t('settings.permissionUnavailable'),
+  }[permission.state ?? 'undetermined'];
+
+  const remindersFooter =
+    permission.state === 'unavailable'
+      ? t('settings.permissionUnavailableHint')
       : permission.state === 'denied'
-        ? t('settings.permissionDenied')
-        : t('settings.permissionUndetermined');
+        ? t('settings.permissionDeniedHint')
+        : t('settings.remindersHint');
 
   const toggleReminders = async (enabled: boolean) => {
     await save({ remindersEnabled: enabled });
@@ -120,7 +127,7 @@ export default function SettingsScreen() {
 
       <ListSection
         title={t('settings.reminders')}
-        footer={permission.state === 'denied' ? t('settings.permissionDeniedHint') : t('settings.remindersHint')}
+        footer={remindersFooter}
       >
         <SwitchRow
           icon="notifications-outline"
@@ -146,7 +153,7 @@ export default function SettingsScreen() {
           icon="shield-outline"
           title={t('settings.permission')}
           value={permissionLabel}
-          onPress={permission.state === 'granted' ? undefined : handlePermission}
+          onPress={permission.state === 'denied' || permission.state === 'undetermined' ? handlePermission : undefined}
           accessibilityHint={
             permission.state === 'denied'
               ? t('settings.openSystemSettings')

@@ -270,6 +270,8 @@ const cnr = {
     permissionGranted: 'Dozvoljeno',
     permissionDenied: 'Odbijeno',
     permissionUndetermined: 'Nije zatraženo',
+    permissionUnavailable: 'Nije dostupno',
+    permissionUnavailableHint: 'Obavještenja nisu dostupna u ovoj verziji aplikacije. Sve ostalo radi normalno.',
     requestPermission: 'Dozvoli obavještenja',
     openSystemSettings: 'Otvori sistemska podešavanja',
     permissionDeniedHint: 'Obavještenja su blokirana u sistemskim podešavanjima. Looply radi i bez njih.',

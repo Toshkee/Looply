@@ -266,6 +266,8 @@ const en: Translation = {
     permissionGranted: 'Allowed',
     permissionDenied: 'Denied',
     permissionUndetermined: 'Not requested',
+    permissionUnavailable: 'Unavailable',
+    permissionUnavailableHint: 'Notifications are not available in this version of the app. Everything else works normally.',
     requestPermission: 'Allow notifications',
     openSystemSettings: 'Open system settings',
     permissionDeniedHint: 'Notifications are blocked in system settings. Looply works fine without them.',

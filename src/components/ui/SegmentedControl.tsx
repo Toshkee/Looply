@@ -35,7 +35,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
               haptics.selection();
               onChange(option.value);
             }}
-            style={[styles.segment, selected && { backgroundColor: colors.surface, boxShadow: shadows.card }]}
+            style={[styles.segment, selected && { backgroundColor: colors.segmentSelected, boxShadow: shadows.card }]}
           >
             <AppText variant="label" tone={selected ? 'primary' : 'secondary'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {option.label}
@@ -55,6 +55,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md - 3,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
 });

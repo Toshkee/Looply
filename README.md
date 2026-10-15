@@ -41,7 +41,7 @@ npm test           # Jest unit tests
 npm run check      # all of the above
 ```
 
-Expo Go is enough for development. Remote push is not used, so Expo Go's push limitations do not apply. Local reminders work in Expo Go. For release builds, use a development or production build (`npx expo run:ios`, or EAS Build).
+Expo Go is enough to develop and review the app on both platforms. One exception: Expo Go for Android (SDK 53+) does not include `expo-notifications`. The app detects this, loads the module lazily, and shows reminders as unavailable there; everything else works. Reminders work in Expo Go on iOS and in any development or release build (`npx expo run:ios`, `npx expo run:android`, or EAS Build).
 
 ## Project structure
 
@@ -104,5 +104,5 @@ Logos are a generated subset of [Simple Icons](https://simpleicons.org) (CC0). T
 - No import or restore yet. Export is one-way.
 - Exchange rates are not used. Multi-currency totals are shown per currency, by design.
 - Reminder delivery time is controlled by the OS. Reminders are planned for a rolling window of 120 days and the window is extended whenever the app is opened.
-- Developed and verified on the iOS Simulator. Android has been type- and lint-checked but not yet run on an emulator.
+- Verified on iOS Simulator (iPhone 18 Pro Max and iPhone SE 3rd gen) and an Android emulator (Pixel 8) through Expo Go. Reminder delivery on Android has not been verified, because it needs a development build.
 - No custom typeface. The UI uses the platform system fonts.

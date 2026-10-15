@@ -50,7 +50,7 @@ export function ListRow({
         ) : null}
       </View>
       {value ? (
-        <AppText variant="callout" tone="secondary" numberOfLines={1} style={styles.value}>
+        <AppText variant="callout" tone="secondary" numberOfLines={2} style={styles.value}>
           {value}
         </AppText>
       ) : null}
@@ -119,6 +119,7 @@ export function SwitchRow({
         value={value}
         onValueChange={onValueChange}
         trackColor={{ true: colors.accent, false: colors.surfaceMuted }}
+        thumbColor="#FFFFFF"
         ios_backgroundColor={colors.surfaceMuted}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -165,8 +166,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
   },
   iconTile: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  texts: { flex: 1, gap: 2 },
-  value: { maxWidth: '45%' },
+  // The title keeps at least ~half the row so long values wrap instead of splitting words.
+  texts: { flex: 1, gap: 2, minWidth: '40%' },
+  value: { maxWidth: '45%', flexShrink: 1, textAlign: 'right' },
   section: { gap: spacing.sm },
   sectionTitle: { marginLeft: spacing.xs },
   card: { overflow: 'hidden' },

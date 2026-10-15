@@ -16,6 +16,8 @@ export interface ColorTokens {
   surface: string;
   surfaceMuted: string;
   surfacePressed: string;
+  /** Selected segment: must read as raised above `surfaceMuted` in both themes. */
+  segmentSelected: string;
   text: string;
   textSecondary: string;
   textTertiary: string;
@@ -42,6 +44,7 @@ export const lightColors: ColorTokens = {
   surface: '#FFFFFF',
   surfaceMuted: '#EBE7DE',
   surfacePressed: '#E2DDD2',
+  segmentSelected: '#FFFFFF',
   text: '#17140F',
   textSecondary: '#5E594F',
   textTertiary: '#857F73',
@@ -64,6 +67,7 @@ export const darkColors: ColorTokens = {
   surface: '#221D19',
   surfaceMuted: '#2C2621',
   surfacePressed: '#352E28',
+  segmentSelected: '#40372F',
   text: '#F6F1EA',
   textSecondary: '#AFA597',
   textTertiary: '#867C70',

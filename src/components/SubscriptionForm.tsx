@@ -129,7 +129,14 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
             {t('common.cancel')}
           </AppText>
         </Pressable>
-        <AppText variant="headline" accessibilityRole="header" numberOfLines={1} style={styles.headerTitle}>
+        <AppText
+          variant="headline"
+          accessibilityRole="header"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          style={styles.headerTitle}
+        >
           {mode === 'create' ? t('form.newTitle') : t('form.editTitle')}
         </AppText>
         <Pressable onPress={submit} disabled={saving} hitSlop={12} accessibilityRole="button" style={[styles.headerButton, styles.headerRight]}>
@@ -307,7 +314,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.md,
   },
-  headerButton: { minWidth: 72, minHeight: 44, justifyContent: 'center' },
+  headerButton: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
   headerRight: { alignItems: 'flex-end' },
   headerTitle: { flex: 1, textAlign: 'center' },
   content: { paddingHorizontal: GUTTER, paddingTop: spacing.sm, gap: spacing.xxl },
