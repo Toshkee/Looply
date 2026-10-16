@@ -37,7 +37,14 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             }}
             style={[styles.segment, selected && { backgroundColor: colors.segmentSelected, boxShadow: shadows.card }]}
           >
-            <AppText variant="label" tone={selected ? 'primary' : 'secondary'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            <AppText
+              variant="callout"
+              tone={selected ? 'primary' : 'secondary'}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={styles.label}
+            >
               {option.label}
             </AppText>
           </Pressable>
@@ -51,10 +58,11 @@ const styles = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: radius.md, padding: 3, gap: 3 },
   segment: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 42,
     borderRadius: radius.md - 3,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
   },
+  label: { fontWeight: '600' },
 });
