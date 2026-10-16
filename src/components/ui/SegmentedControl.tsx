@@ -20,6 +20,9 @@ interface SegmentedControlProps<T extends string> {
 
 export function SegmentedControl<T extends string>({ options, value, onChange, accessibilityLabel }: SegmentedControlProps<T>) {
   const { colors, shadows } = useTheme();
+  // Four or more segments get a smaller face and may wrap to two lines. Text is never
+  // auto-shrunk: on devices adjustsFontSizeToFit shrinks centered labels far below their size.
+  const compact = options.length >= 4;
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={accessibilityLabel} style={[styles.track, { backgroundColor: colors.surfaceMuted }]}>
       {options.map((option) => {
@@ -38,11 +41,11 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             style={[styles.segment, selected && { backgroundColor: colors.segmentSelected, boxShadow: shadows.card }]}
           >
             <AppText
-              variant="callout"
+              variant={compact ? 'label' : 'callout'}
               tone={selected ? 'primary' : 'secondary'}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
+              align="center"
+              numberOfLines={compact ? 2 : 1}
+              maxFontSizeMultiplier={1.3}
               style={styles.label}
             >
               {option.label}
@@ -63,6 +66,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
   },
   label: { fontWeight: '600' },
 });

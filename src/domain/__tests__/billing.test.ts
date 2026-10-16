@@ -10,6 +10,7 @@ import {
   sumPaymentsByCurrency,
   totalsByCurrency,
 } from '../billing';
+import { reactivate } from '../subscription';
 import { iso, makeSubscription } from './fixtures';
 
 describe('renewal dates', () => {
@@ -199,5 +200,15 @@ describe('scheduled payments', () => {
       { currency: 'EUR', amountMinor: 1000 + 250 * 5, count: 6 },
       { currency: 'USD', amountMinor: 999, count: 1 },
     ]);
+  });
+});
+
+describe('reactivating a subscription', () => {
+  test('restarts billing from the chosen date and keeps everything else', () => {
+    const paused = makeSubscription({ status: 'paused', anchorDate: iso('2026-01-31'), notes: 'Family plan' });
+    const input = reactivate(paused, iso('2026-10-16'));
+    expect(input).toMatchObject({ status: 'active', anchorDate: '2026-10-16', notes: 'Family plan', amountMinor: paused.amountMinor });
+    expect(input).not.toHaveProperty('id');
+    expect(nextBillingDate(input, iso('2026-10-20'))).toBe('2026-11-16');
   });
 });

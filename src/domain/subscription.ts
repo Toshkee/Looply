@@ -63,6 +63,20 @@ export interface SubscriptionSnapshot {
   status: SubscriptionStatus | 'deleted';
 }
 
+/** The editable fields of a stored subscription. */
+export function toInput({ id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input }: Subscription): SubscriptionInput {
+  return input;
+}
+
+/**
+ * Makes a paused or cancelled subscription active again from a new billing
+ * date. Services usually restart billing when a subscription resumes, so the
+ * old schedule is replaced instead of silently continued.
+ */
+export function reactivate(subscription: Subscription, nextBillingDate: ISODate): SubscriptionInput {
+  return { ...toInput(subscription), status: 'active', anchorDate: nextBillingDate };
+}
+
 export function isBillingInterval(value: unknown): value is BillingInterval {
   return typeof value === 'string' && (BILLING_INTERVALS as readonly string[]).includes(value);
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CATEGORY_ICONS } from '@/components/categoryVisuals';
+import { ResumeSheet } from '@/components/ResumeSheet';
 import { SubscriptionAvatar } from '@/components/SubscriptionAvatar';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { ListRow, ListSection } from '@/components/ui/ListRow';
 import { annualEstimateMinor, monthlyEstimateMinor, nextBillingDate, occurrencesBetween } from '@/domain/billing';
-import { addDays, diffDays, todayLocal } from '@/domain/calendarDate';
+import { addDays, diffDays, todayLocal, type ISODate } from '@/domain/calendarDate';
 import type { SubscriptionStatus } from '@/domain/subscription';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
@@ -30,9 +31,11 @@ export default function SubscriptionDetailsScreen() {
   const today = useToday();
   const subscription = useSubscription(id);
   const setStatus = useSubscriptionStore((s) => s.setStatus);
+  const reactivate = useSubscriptionStore((s) => s.reactivate);
   const remove = useSubscriptionStore((s) => s.remove);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   if (!subscription) {
     // Briefly empty while a deleted subscription's screen closes.
@@ -61,6 +64,12 @@ export default function SubscriptionDetailsScreen() {
   };
 
   const changeStatus = (next: SubscriptionStatus) => run(() => setStatus(subscription.id, next));
+
+  const confirmResume = (nextBillingDate: ISODate) =>
+    run(async () => {
+      await reactivate(subscription.id, nextBillingDate);
+      setResuming(false);
+    });
 
   const confirmCancel = () =>
     Alert.alert(t('details.cancelTitle'), t('details.cancelMessage'), [
@@ -211,11 +220,11 @@ export default function SubscriptionDetailsScreen() {
             </>
           ) : status === 'paused' ? (
             <>
-              <Button label={t('details.resume')} icon="play" onPress={() => changeStatus('active')} disabled={busy} />
+              <Button label={t('details.resume')} icon="play" onPress={() => setResuming(true)} disabled={busy} />
               <Button label={t('details.markCancelled')} icon="close-circle" variant="secondary" onPress={confirmCancel} disabled={busy} />
             </>
           ) : (
-            <Button label={t('details.reactivate')} icon="play" onPress={() => changeStatus('active')} disabled={busy} />
+            <Button label={t('details.reactivate')} icon="play" onPress={() => setResuming(true)} disabled={busy} />
           )}
           <Button label={t('details.deleteSubscription')} icon="trash-outline" variant="danger" onPress={confirmDelete} disabled={busy} />
         </View>
@@ -224,6 +233,9 @@ export default function SubscriptionDetailsScreen() {
           {t('details.addedOn', { date: format.date(todayLocal(new Date(subscription.createdAt)), 'full') })}
         </AppText>
       </ScrollView>
+      {resuming ? (
+        <ResumeSheet subscription={subscription} busy={busy} onConfirm={confirmResume} onClose={() => setResuming(false)} />
+      ) : null}
     </>
   );
 }
