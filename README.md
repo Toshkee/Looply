@@ -19,6 +19,7 @@ Looply tracks recurring costs without accounts, a backend or bank connections. E
 - **Export:** JSON or CSV through the system share sheet.
 - **Import:** restore a JSON export on a new phone or after reinstalling, with a summary to confirm first.
 - **Reset:** erase all local data.
+- **Looply Pro:** a one-time unlock. The free version holds 6 subscriptions; Pro removes the limit and opens Insights and Calendar. Purchases run in test mode for now (see below).
 - **Appearance:** light theme by default, plus dark and system.
 - **Logos:** bundled service logos (78 brands) with monogram fallbacks.
 
@@ -53,7 +54,7 @@ src/
                 reminders planning, validation, export/import, list filtering, brand matching
   data/         SQLite access: migrations, repositories (behind interfaces)
   state/        Zustand stores, startup bootstrap, service wiring
-  services/     Platform adapters: notifications, export/share, import file picker, haptics
+  services/     Platform adapters: notifications, export/share, import file picker, purchases, haptics
   i18n/         i18next setup, translations (cnr/en/ru), plural rules, formatters
   theme/        Design tokens and theme provider
   components/   UI primitives (ui/) and app components
@@ -91,6 +92,13 @@ Settings → Data → Import from JSON reads a file made by Export as JSON (`for
 - **Writes:** all changes go through the repository in one transaction, so a failed import writes nothing. Spending snapshots are recorded the same way as for manual edits, and reminders reconcile automatically afterwards.
 - **Not restored:** app settings (language, currency, theme, reminder time) and spending history before the import. History starts again from the import date.
 
+## Looply Pro
+
+- **Model:** free with a one-time Pro unlock, no subscription and no ads. The free version holds up to 6 subscriptions (`FREE_SUBSCRIPTION_LIMIT` in `src/domain/pro.ts`). Pro removes the limit and opens the Insights and Calendar tabs.
+- **Never hostage:** export and import stay free. A free device over the limit (after an import, for example) keeps and can edit everything; it only cannot add more.
+- **Where it applies:** every add button goes through `useAddSubscription`, and `subscription/new` redirects to the offer when the limit is reached. Insights and Calendar show a locked screen. Settings → Looply Pro shows usage, restore, and in test mode a row to return to the free version.
+- **Test mode:** `src/services/purchases.ts` is a test adapter. Buying asks for an in-app confirmation, charges nothing and stores `proUnlocked` in local settings, and restore finds nothing. **Before a store release** it must be replaced with a StoreKit / Google Play Billing adapter (for example RevenueCat) behind the same interface. That needs a development build, products in App Store Connect and Play Console, and the price coming from the store.
+
 ## Localization
 
 - Languages: Montenegrin (`cnr`, Latin script, primary and fallback), English and Russian.
@@ -112,6 +120,7 @@ Logos are a generated subset of [Simple Icons](https://simpleicons.org) (CC0). T
 ## Known limitations
 
 - Import reads only Looply JSON exports. CSV is export-only.
+- Looply Pro purchases are test-only. No store billing is connected yet.
 - Exchange rates are not used. Multi-currency totals are shown per currency, by design.
 - Reminder delivery time is controlled by the OS. Reminders are planned for a rolling window of 120 days and the window is extended whenever the app is opened.
 - Verified on iOS Simulator (iPhone 18 Pro Max and iPhone SE 3rd gen) and an Android emulator (Pixel 8) through Expo Go. Reminder delivery on Android has not been verified, because it needs a development build.

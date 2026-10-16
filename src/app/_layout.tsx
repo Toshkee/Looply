@@ -82,6 +82,7 @@ function RootNavigator() {
           <Stack.Screen name="privacy" options={pushed} />
           <Stack.Screen name="subscription/new" options={{ presentation: 'modal' }} />
           <Stack.Screen name="subscription/edit/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!onboarded}>
           <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />

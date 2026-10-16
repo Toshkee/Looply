@@ -11,6 +11,7 @@ import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { CURRENCY_CODES, type CurrencyCode } from '@/domain/currency';
 import { parseImport, planImport, type ImportFileError } from '@/domain/importData';
+import { FREE_SUBSCRIPTION_LIMIT } from '@/domain/pro';
 import { REMINDER_HOURS, type AppSettings, type ThemePreference } from '@/domain/settings';
 import { REMINDER_OPTIONS } from '@/domain/subscription';
 import { useNotificationPermission } from '@/hooks/useNotificationPermission';
@@ -18,8 +19,10 @@ import { APP_LANGUAGES, LANGUAGE_NATIVE_NAMES, type AppLanguage } from '@/i18n/l
 import { shareExport, type ExportFormat } from '@/services/exportService';
 import { haptics } from '@/services/haptics';
 import { ImportFileTooLargeError, pickImportFile } from '@/services/importService';
+import { purchases } from '@/services/purchases';
 import { cancelAllReminders } from '@/services/notifications';
 import { resetAllData } from '@/state/bootstrap';
+import { relockProForTesting, restorePro, useIsPro } from '@/state/pro';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 import { spacing } from '@/theme/tokens';
@@ -42,6 +45,7 @@ export default function SettingsScreen() {
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);
   const importMany = useSubscriptionStore((s) => s.importMany);
   const permission = useNotificationPermission();
+  const isPro = useIsPro();
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
 
@@ -141,6 +145,19 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const runRestore = async () => {
+    try {
+      if (await restorePro()) {
+        haptics.success();
+        Alert.alert(t('pro.restored'));
+      } else {
+        Alert.alert(t('pro.restoreNone'));
+      }
+    } catch {
+      Alert.alert(t('pro.error'));
+    }
+  };
+
   const confirmReset = () =>
     Alert.alert(t('settings.resetTitle'), t('settings.resetMessage'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -161,6 +178,34 @@ export default function SettingsScreen() {
 
   return (
     <ScreenScroll title={t('settings.title')}>
+      <ListSection title={t('pro.title')}>
+        {isPro ? (
+          <ListRow icon="sparkles-outline" title={t('pro.settingsActive')} onPress={() => router.push('/pro')} />
+        ) : (
+          <ListRow
+            icon="sparkles-outline"
+            title={t('pro.settingsUnlock')}
+            subtitle={
+              subscriptions.length >= FREE_SUBSCRIPTION_LIMIT
+                ? t('pro.settingsLimitReached', { limit: FREE_SUBSCRIPTION_LIMIT })
+                : t('pro.settingsUsage', { used: subscriptions.length, limit: FREE_SUBSCRIPTION_LIMIT })
+            }
+            onPress={() => router.push('/pro')}
+          />
+        )}
+        {!isPro ? (
+          <ListRow icon="refresh-outline" title={t('pro.restore')} onPress={() => void runRestore()} showChevron={false} />
+        ) : null}
+        {isPro && purchases.mode === 'test' ? (
+          <ListRow
+            icon="flask-outline"
+            title={t('pro.relockTest')}
+            onPress={() => void relockProForTesting().catch(() => Alert.alert(t('errors.generic')))}
+            showChevron={false}
+          />
+        ) : null}
+      </ListSection>
+
       <ListSection title={t('settings.general')}>
         <ListRow
           icon="language-outline"

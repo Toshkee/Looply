@@ -16,14 +16,19 @@ import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { TextField } from '@/components/ui/TextField';
 import { DEFAULT_LIST_QUERY, filterAndSortSubscriptions, isDefaultQuery, type CategoryFilter, type ListQuery, type SortKey, type StatusFilter } from '@/domain/listing';
+import { FREE_SUBSCRIPTION_LIMIT } from '@/domain/pro';
 import { CATEGORY_IDS } from '@/domain/subscription';
+import { useAddSubscription } from '@/hooks/useAddSubscription';
 import { useToday } from '@/hooks/useToday';
+import { useIsPro } from '@/state/pro';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { spacing } from '@/theme/tokens';
 
 export default function SubscriptionsScreen() {
   const { t } = useTranslation();
+  const addSubscription = useAddSubscription();
+  const isPro = useIsPro();
   const { colors } = useTheme();
   const today = useToday();
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);
@@ -48,7 +53,7 @@ export default function SubscriptionsScreen() {
   return (
     <ScreenScroll
       title={t('subscriptions.title')}
-      headerRight={<IconButton icon="add" accessibilityLabel={t('a11y.addSubscription')} onPress={() => router.push('/subscription/new')} />}
+      headerRight={<IconButton icon="add" accessibilityLabel={t('a11y.addSubscription')} onPress={addSubscription} />}
     >
       {subscriptions.length === 0 ? (
         <Card>
@@ -57,7 +62,7 @@ export default function SubscriptionsScreen() {
             title={t('home.emptyTitle')}
             body={t('home.emptyBody')}
             actionLabel={t('home.emptyAction')}
-            onAction={() => router.push('/subscription/new')}
+            onAction={addSubscription}
           />
         </Card>
       ) : (
@@ -109,9 +114,22 @@ export default function SubscriptionsScreen() {
             </Card>
           ) : (
             <View style={styles.list}>
-              <AppText variant="caption" tone="secondary" style={styles.count}>
-                {t('counts.subscriptions', { count: results.length })}
-              </AppText>
+              <View style={styles.countRow}>
+                <AppText variant="caption" tone="secondary">
+                  {t('counts.subscriptions', { count: results.length })}
+                </AppText>
+                {!isPro ? (
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/pro', params: { feature: 'limit' } })}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                  >
+                    <AppText variant="label" tone="accent">
+                      {t('pro.freeUsage', { used: Math.min(subscriptions.length, FREE_SUBSCRIPTION_LIMIT), limit: FREE_SUBSCRIPTION_LIMIT })}
+                    </AppText>
+                  </Pressable>
+                ) : null}
+              </View>
               {results.map((subscription) => (
                 <SubscriptionRow key={subscription.id} subscription={subscription} today={today} />
               ))}
@@ -155,5 +173,5 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   reset: { alignItems: 'center', paddingBottom: spacing.xl, minHeight: 44, justifyContent: 'center' },
   list: { gap: spacing.sm + 2 },
-  count: { marginLeft: spacing.xs },
+  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginHorizontal: spacing.xs },
 });

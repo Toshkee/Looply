@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { ProLockedScreen } from '@/components/ProLocked';
 import { CategoryBars } from '@/components/CategoryBars';
 import { CATEGORY_ICONS } from '@/components/categoryVisuals';
 import { MonthColumns } from '@/components/MonthColumns';
@@ -28,12 +29,19 @@ import {
 } from '@/domain/insights';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
+import { useIsPro } from '@/state/pro';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { radius, spacing } from '@/theme/tokens';
 
 export default function InsightsScreen() {
+  const { t } = useTranslation();
+  const isPro = useIsPro();
+  return isPro ? <Insights /> : <ProLockedScreen title={t('insights.title')} feature="insights" />;
+}
+
+function Insights() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const format = useFormatters();

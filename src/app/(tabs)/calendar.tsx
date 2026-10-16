@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { ProLockedScreen } from '@/components/ProLocked';
 import { MonthCalendar } from '@/components/MonthCalendar';
 import { PaymentRow } from '@/components/PaymentRow';
 import { AppText } from '@/components/ui/AppText';
@@ -14,6 +15,7 @@ import { isBillable, scheduledPayments, sumPaymentsByCurrency, type ScheduledPay
 import { addDays, endOfMonth, startOfMonth, type ISODate } from '@/domain/calendarDate';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
+import { useIsPro } from '@/state/pro';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 import { spacing } from '@/theme/tokens';
@@ -22,6 +24,12 @@ const LIST_DAYS = 90;
 type Mode = 'list' | 'month';
 
 export default function CalendarScreen() {
+  const { t } = useTranslation();
+  const isPro = useIsPro();
+  return isPro ? <Calendar /> : <ProLockedScreen title={t('calendar.title')} feature="calendar" />;
+}
+
+function Calendar() {
   const { t } = useTranslation();
   const today = useToday();
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);

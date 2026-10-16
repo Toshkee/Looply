@@ -17,6 +17,8 @@ export interface AppSettings {
   reminderHour: number;
   reminderMinute: number;
   onboardingCompleted: boolean;
+  /** Looply Pro is unlocked on this device (test purchases for now; see services/purchases). */
+  proUnlocked: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reminderHour: 9,
   reminderMinute: 0,
   onboardingCompleted: false,
+  proUnlocked: false,
 };
 
 export const REMINDER_HOURS = [7, 8, 9, 10, 12, 15, 18, 20] as const;
@@ -54,5 +57,6 @@ export function parseSettings(raw: Record<string, unknown>): AppSettings {
     reminderMinute: isInt(raw.reminderMinute, 0, 59) ? raw.reminderMinute : DEFAULT_SETTINGS.reminderMinute,
     onboardingCompleted:
       typeof raw.onboardingCompleted === 'boolean' ? raw.onboardingCompleted : DEFAULT_SETTINGS.onboardingCompleted,
+    proUnlocked: raw.proUnlocked === true,
   };
 }

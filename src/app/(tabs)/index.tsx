@@ -16,6 +16,7 @@ import { UpcomingCard } from '@/components/UpcomingCard';
 import { isBillable, nextPayment, scheduledPayments, sumPaymentsByCurrency, totalsByCurrency } from '@/domain/billing';
 import { addDays } from '@/domain/calendarDate';
 import { categoryBreakdown } from '@/domain/insights';
+import { useAddSubscription } from '@/hooks/useAddSubscription';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -50,7 +51,7 @@ export default function DashboardScreen() {
   }, [subscriptions, currency, today]);
 
   const weekday = format.date(today, 'weekday');
-  const addSubscription = () => router.push('/subscription/new');
+  const addSubscription = useAddSubscription();
 
   return (
     <ScreenScroll

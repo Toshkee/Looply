@@ -160,8 +160,16 @@ describe('SQLite storage', () => {
   test('settings persist and fall back to defaults', async () => {
     const settings = createSqliteSettingsRepository(db);
     expect(await settings.load()).toEqual(DEFAULT_SETTINGS);
-    await settings.save({ language: 'ru', currency: 'USD', theme: 'dark', onboardingCompleted: true });
-    expect(await settings.load()).toMatchObject({ language: 'ru', currency: 'USD', theme: 'dark', onboardingCompleted: true });
+    await settings.save({ language: 'ru', currency: 'USD', theme: 'dark', onboardingCompleted: true, proUnlocked: true });
+    expect(await settings.load()).toMatchObject({
+      language: 'ru',
+      currency: 'USD',
+      theme: 'dark',
+      onboardingCompleted: true,
+      proUnlocked: true,
+    });
+    await db.runAsync("UPDATE settings SET value = '\"yes\"' WHERE key = 'proUnlocked'", []);
+    expect((await settings.load()).proUnlocked).toBe(false);
     await db.runAsync("UPDATE settings SET value = '\"klingon\"' WHERE key = 'language'", []);
     expect((await settings.load()).language).toBeNull();
   });
