@@ -13,28 +13,32 @@ import { SubscriptionAvatar } from './SubscriptionAvatar';
 import { AppText } from './ui/AppText';
 import { PressableScale } from './ui/PressableScale';
 
-/** A subscription in a list: actual price per period, with its next date or status. */
+/**
+ * A subscription in a list. The left side says when (or the status), the
+ * right side what is paid per period, so the interval appears only once.
+ */
 export function SubscriptionRow({ subscription, today }: { subscription: Subscription; today: ISODate }) {
   const { colors, shadows } = useTheme();
   const { t } = useTranslation();
   const format = useFormatters();
   const active = subscription.status === 'active';
   const amount = format.money(subscription.amountMinor, subscription.currency);
-  const detail = active
-    ? `${t(`interval.${subscription.interval}`)} · ${format.relativeDay(nextBillingDate(subscription, today), today)}`
-    : t(`status.${subscription.status}`);
-  const monthly =
-    subscription.interval !== 'monthly' && active
-      ? t('subscriptions.perMonthEstimate', {
+  const period = t(`intervalShort.${subscription.interval}`);
+  const monthlyHint =
+    subscription.interval === 'monthly'
+      ? null
+      : t('subscriptions.perMonthEstimate', {
           amount: format.money(monthlyEstimateMinor(subscription.amountMinor, subscription.interval), subscription.currency),
-        })
-      : t(`intervalShort.${subscription.interval}`);
+        });
+  const detail = active
+    ? [format.relativeDay(nextBillingDate(subscription, today), today), monthlyHint].filter(Boolean).join(' · ')
+    : t(`status.${subscription.status}`);
 
   return (
     <PressableScale
       onPress={() => router.push(`/subscription/${subscription.id}`)}
       pressedScale={0.98}
-      accessibilityLabel={`${subscription.name}, ${amount}, ${detail}`}
+      accessibilityLabel={`${subscription.name}, ${amount} ${period}, ${detail}`}
       style={[styles.row, { backgroundColor: colors.surface, boxShadow: shadows.card }, !active && styles.inactive]}
     >
       <SubscriptionAvatar name={subscription.name} category={subscription.category} />
@@ -51,7 +55,7 @@ export function SubscriptionRow({ subscription, today }: { subscription: Subscri
           {amount}
         </AppText>
         <AppText variant="caption" tone="tertiary" numberOfLines={1}>
-          {monthly}
+          {period}
         </AppText>
       </View>
     </PressableScale>

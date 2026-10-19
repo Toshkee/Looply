@@ -1,4 +1,4 @@
-import { DEFAULT_LIST_QUERY, filterAndSortSubscriptions, type ListQuery } from '../listing';
+import { DEFAULT_LIST_QUERY, filterAndSortSubscriptions, isStatusFilter, type ListQuery } from '../listing';
 import { iso, makeSubscription } from './fixtures';
 
 const today = iso('2026-10-15');
@@ -34,5 +34,10 @@ describe('subscription list', () => {
     expect(run({ sort: 'name' })).toEqual(['Ćevapi klub', 'Đaci Plus', 'iCloud+', 'Netflix', 'Spotify']);
     // Weekly 5,00 ≈ 21,67/month beats monthly 12,99, which beats annual 99,99 ≈ 8,33/month.
     expect(run({ sort: 'amount' })).toEqual(['Ćevapi klub', 'Netflix', 'Spotify', 'iCloud+', 'Đaci Plus']);
+  });
+
+  test('recognizes status filters passed as route params', () => {
+    expect(['all', 'active', 'paused', 'cancelled'].every(isStatusFilter)).toBe(true);
+    expect([undefined, '', 'Active', 'deleted', ['active']].some(isStatusFilter)).toBe(false);
   });
 });

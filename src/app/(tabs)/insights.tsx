@@ -36,9 +36,29 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { radius, spacing } from '@/theme/tokens';
 
 export default function InsightsScreen() {
-  const { t } = useTranslation();
   const isPro = useIsPro();
-  return isPro ? <Insights /> : <ProLockedScreen title={t('insights.title')} feature="insights" />;
+  return isPro ? <Insights /> : <LockedInsights />;
+}
+
+/** The free version sees its own spending by category: the largest in full, the rest hidden. */
+function LockedInsights() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const format = useFormatters();
+  const subscriptions = useSubscriptionStore((s) => s.subscriptions);
+  const preferred = useSettingsStore((s) => s.settings.currency);
+  const teaser = useMemo(() => {
+    const currency = activeCurrencies(subscriptions, preferred)[0];
+    if (!currency) return [];
+    return categoryBreakdown(subscriptions, currency).map((spend) => ({
+      key: spend.category,
+      label: t(`category.${spend.category}`),
+      value: format.money(spend.monthlyMinor, currency),
+      detail: t('insights.shareOfTotal', { percent: Math.round(spend.share * 100) }),
+      leading: <Icon name={CATEGORY_ICONS[spend.category]} size={20} color={colors.textSecondary} />,
+    }));
+  }, [subscriptions, preferred, format, t, colors.textSecondary]);
+  return <ProLockedScreen title={t('insights.title')} feature="insights" teaserTitle={t('pro.teaserInsights')} teaser={teaser} />;
 }
 
 function Insights() {

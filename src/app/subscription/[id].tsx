@@ -32,14 +32,13 @@ export default function SubscriptionDetailsScreen() {
   const subscription = useSubscription(id);
   const setStatus = useSubscriptionStore((s) => s.setStatus);
   const reactivate = useSubscriptionStore((s) => s.reactivate);
-  const remove = useSubscriptionStore((s) => s.remove);
+  const [existed] = useState(() => subscription !== undefined);
   const [busy, setBusy] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [resuming, setResuming] = useState(false);
 
   if (!subscription) {
-    // Briefly empty while a deleted subscription's screen closes.
-    if (deleting) return null;
+    // Deleted from the edit screen: briefly empty while both screens close.
+    if (existed) return null;
     return (
       <View style={[styles.missing, { backgroundColor: colors.background }]}>
         <EmptyState icon="alert-circle-outline" title={t('details.notFound')} />
@@ -50,7 +49,8 @@ export default function SubscriptionDetailsScreen() {
   const { name, amountMinor, currency, interval, category, status } = subscription;
   const active = status === 'active';
   const next = nextBillingDate(subscription, today);
-  const upcoming = active ? occurrencesBetween(subscription.anchorDate, interval, today, addDays(today, 400)).slice(0, 4) : [];
+  // The next payment is already in the price card; the list continues after it.
+  const later = active ? occurrencesBetween(subscription.anchorDate, interval, today, addDays(today, 400)).slice(1, 4) : [];
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -75,26 +75,6 @@ export default function SubscriptionDetailsScreen() {
     Alert.alert(t('details.cancelTitle'), t('details.cancelMessage'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('details.cancelConfirm'), onPress: () => changeStatus('cancelled') },
-    ]);
-
-  const confirmDelete = () =>
-    Alert.alert(t('details.deleteTitle', { name }), t('details.deleteMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: () =>
-          run(async () => {
-            setDeleting(true);
-            try {
-              await remove(subscription.id);
-              router.back();
-            } catch (error) {
-              setDeleting(false);
-              throw error;
-            }
-          }),
-      },
     ]);
 
   const reminderLabel =
@@ -176,8 +156,9 @@ export default function SubscriptionDetailsScreen() {
         ) : null}
 
         <ListSection>
-          <ListRow title={t('details.billing')} value={t(`interval.${interval}`)} />
-          <ListRow title={t('details.monthlyEstimate')} value={format.money(monthlyEstimateMinor(amountMinor, interval), currency)} />
+          {interval !== 'monthly' ? (
+            <ListRow title={t('details.monthlyEstimate')} value={format.money(monthlyEstimateMinor(amountMinor, interval), currency)} />
+          ) : null}
           <ListRow title={t('details.annualEstimate')} value={format.money(annualEstimateMinor(amountMinor, interval), currency)} />
           <ListRow title={t('details.reminder')} value={reminderLabel} />
           {subscription.url ? (
@@ -199,9 +180,9 @@ export default function SubscriptionDetailsScreen() {
           </ListSection>
         ) : null}
 
-        {upcoming.length > 0 ? (
-          <ListSection title={t('details.upcomingPayments')}>
-            {upcoming.map((date) => (
+        {later.length > 0 ? (
+          <ListSection title={t('details.laterPayments')}>
+            {later.map((date) => (
               <ListRow
                 key={date}
                 title={format.date(date, 'full')}
@@ -226,7 +207,6 @@ export default function SubscriptionDetailsScreen() {
           ) : (
             <Button label={t('details.reactivate')} icon="play" onPress={() => setResuming(true)} disabled={busy} />
           )}
-          <Button label={t('details.deleteSubscription')} icon="trash-outline" variant="danger" onPress={confirmDelete} disabled={busy} />
         </View>
 
         <AppText variant="caption" tone="tertiary" align="center">

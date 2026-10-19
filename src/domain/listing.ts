@@ -1,8 +1,12 @@
 import { monthlyEstimateMinor, nextBillingDate } from './billing';
 import type { ISODate } from './calendarDate';
-import type { CategoryId, Subscription, SubscriptionStatus } from './subscription';
+import { SUBSCRIPTION_STATUSES, type CategoryId, type Subscription, type SubscriptionStatus } from './subscription';
 
 export type StatusFilter = 'all' | SubscriptionStatus;
+
+export function isStatusFilter(value: unknown): value is StatusFilter {
+  return value === 'all' || (SUBSCRIPTION_STATUSES as readonly unknown[]).includes(value);
+}
 export type CategoryFilter = 'all' | CategoryId;
 export type SortKey = 'name' | 'amount' | 'nextPayment';
 

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,16 @@ import { IconButton } from '@/components/ui/IconButton';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { TextField } from '@/components/ui/TextField';
-import { DEFAULT_LIST_QUERY, filterAndSortSubscriptions, isDefaultQuery, type CategoryFilter, type ListQuery, type SortKey, type StatusFilter } from '@/domain/listing';
+import {
+  DEFAULT_LIST_QUERY,
+  filterAndSortSubscriptions,
+  isDefaultQuery,
+  isStatusFilter,
+  type CategoryFilter,
+  type ListQuery,
+  type SortKey,
+  type StatusFilter,
+} from '@/domain/listing';
 import { FREE_SUBSCRIPTION_LIMIT } from '@/domain/pro';
 import { CATEGORY_IDS } from '@/domain/subscription';
 import { useAddSubscription } from '@/hooks/useAddSubscription';
@@ -32,11 +41,20 @@ export default function SubscriptionsScreen() {
   const { colors } = useTheme();
   const today = useToday();
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);
-  const [query, setQuery] = useState<ListQuery>(DEFAULT_LIST_QUERY);
+  const params = useLocalSearchParams<{ status?: string }>();
+  const [ownQuery, setQuery] = useState<ListQuery>(DEFAULT_LIST_QUERY);
   const [sheet, setSheet] = useState<'category' | 'sort' | null>(null);
 
+  // A link (e.g. the overview's "active" card) may set the status. It applies
+  // until the user changes the filters here, which takes it into local state.
+  const linkedStatus = isStatusFilter(params.status) ? params.status : null;
+  const query = useMemo(() => (linkedStatus ? { ...ownQuery, status: linkedStatus } : ownQuery), [ownQuery, linkedStatus]);
   const results = useMemo(() => filterAndSortSubscriptions(subscriptions, query, today), [subscriptions, query, today]);
-  const patch = (value: Partial<ListQuery>) => setQuery((current) => ({ ...current, ...value }));
+  const changeQuery = (next: ListQuery) => {
+    setQuery(next);
+    if (linkedStatus) router.setParams({ status: undefined });
+  };
+  const patch = (value: Partial<ListQuery>) => changeQuery({ ...query, ...value });
 
   const sortLabels: Record<SortKey, string> = {
     nextPayment: t('subscriptions.sortNextPayment'),
@@ -105,7 +123,7 @@ export default function SubscriptionsScreen() {
             <Card>
               <EmptyState icon="search" title={t('subscriptions.noResultsTitle')} body={t('subscriptions.noResultsBody')} />
               {!isDefaultQuery(query) ? (
-                <Pressable onPress={() => setQuery({ ...DEFAULT_LIST_QUERY, sort: query.sort })} accessibilityRole="button" style={styles.reset}>
+                <Pressable onPress={() => changeQuery({ ...DEFAULT_LIST_QUERY, sort: query.sort })} accessibilityRole="button" style={styles.reset}>
                   <AppText variant="bodyStrong" tone="accent">
                     {t('subscriptions.resetFilters')}
                   </AppText>

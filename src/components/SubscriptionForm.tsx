@@ -46,9 +46,16 @@ interface SubscriptionFormProps {
   mode: 'create' | 'edit';
   initial: SubscriptionFormValues;
   onSubmit: (input: SubscriptionInput, meta: SubmitMeta) => Promise<void>;
+  /** After a successful save; closes the form by default. */
+  onDone?: () => void;
+  /** Replaces closing the form, e.g. skipping to the next service in a series. */
+  cancel?: { label: string; onPress: () => void };
+  /** Shown under the title, e.g. "2 of 3". */
+  progress?: string;
+  onDelete?: () => void;
 }
 
-export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormProps) {
+export function SubscriptionForm({ mode, initial, onSubmit, onDone, cancel: cancelAction, progress, onDelete }: SubscriptionFormProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const format = useFormatters();
@@ -82,11 +89,12 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
     amountRef.current?.focus();
   };
 
+  const leave = cancelAction?.onPress ?? (() => router.back());
   const cancel = () => {
-    if (!dirty) return router.back();
+    if (!dirty) return leave();
     Alert.alert(t('form.discardTitle'), t('form.discardMessage'), [
       { text: t('form.keepEditing'), style: 'cancel' },
-      { text: t('form.discard'), style: 'destructive', onPress: () => router.back() },
+      { text: t('form.discard'), style: 'destructive', onPress: leave },
     ]);
   };
 
@@ -101,7 +109,8 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
     try {
       await onSubmit(result.input, { dateChanged });
       haptics.success();
-      router.back();
+      if (onDone) onDone();
+      else router.back();
       // Ask for notification permission in context, the first time a reminder is actually set.
       if (remindersEnabled && result.input.reminderDaysBefore !== null && result.input.status === 'active') {
         requestPermission().catch(() => undefined);
@@ -126,19 +135,26 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? spacing.md : insets.top + spacing.sm }]}>
         <Pressable onPress={cancel} hitSlop={12} accessibilityRole="button" style={styles.headerButton}>
           <AppText variant="body" tone="secondary">
-            {t('common.cancel')}
+            {cancelAction?.label ?? t('common.cancel')}
           </AppText>
         </Pressable>
-        <AppText
-          variant="headline"
-          accessibilityRole="header"
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={styles.headerTitle}
-        >
-          {mode === 'create' ? t('form.newTitle') : t('form.editTitle')}
-        </AppText>
+        <View style={styles.headerTitle}>
+          <AppText
+            variant="headline"
+            align="center"
+            accessibilityRole="header"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            {mode === 'create' ? t('form.newTitle') : t('form.editTitle')}
+          </AppText>
+          {progress ? (
+            <AppText variant="caption" tone="secondary" align="center">
+              {progress}
+            </AppText>
+          ) : null}
+        </View>
         <Pressable onPress={submit} disabled={saving} hitSlop={12} accessibilityRole="button" style={[styles.headerButton, styles.headerRight]}>
           <AppText variant="bodyStrong" tone="accent">
             {mode === 'create' ? t('form.create') : t('common.save')}
@@ -159,7 +175,7 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
               value={values.name}
               onChangeText={(text) => set('name', text)}
               error={fieldErrorMessage(t, errors, 'name')}
-              autoFocus={mode === 'create'}
+              autoFocus={mode === 'create' && initial.name === ''}
               autoCorrect={false}
               returnKeyType="next"
               onSubmitEditing={() => amountRef.current?.focus()}
@@ -201,6 +217,7 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
             onChangeText={(text) => set('amount', text)}
             error={fieldErrorMessage(t, errors, 'amount')}
             keyboardType="decimal-pad"
+            autoFocus={mode === 'create' && initial.name !== ''}
             large
             trailing={
               <Pressable
@@ -288,6 +305,9 @@ export function SubscriptionForm({ mode, initial, onSubmit }: SubscriptionFormPr
           </FormSection>
 
           <Button label={mode === 'create' ? t('home.addSubscription') : t('common.save')} onPress={submit} loading={saving} icon={mode === 'create' ? 'add' : 'checkmark'} />
+          {onDelete ? (
+            <Button label={t('details.deleteSubscription')} icon="trash-outline" variant="danger" onPress={onDelete} disabled={saving} />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -316,7 +336,7 @@ const styles = StyleSheet.create({
   },
   headerButton: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
   headerRight: { alignItems: 'flex-end' },
-  headerTitle: { flex: 1, textAlign: 'center' },
+  headerTitle: { flex: 1, alignItems: 'center' },
   content: { paddingHorizontal: GUTTER, paddingTop: spacing.sm, gap: spacing.xxl },
   nameBlock: { gap: spacing.md },
   suggestions: { gap: spacing.sm },

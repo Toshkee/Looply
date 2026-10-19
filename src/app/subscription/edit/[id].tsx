@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { SubscriptionForm } from '@/components/SubscriptionForm';
@@ -22,6 +22,7 @@ export default function EditSubscriptionScreen() {
   const format = useFormatters();
   const subscription = useSubscription(id);
   const update = useSubscriptionStore((s) => s.update);
+  const remove = useSubscriptionStore((s) => s.remove);
 
   const [initial] = useState<SubscriptionFormValues | null>(() =>
     subscription
@@ -40,7 +41,7 @@ export default function EditSubscriptionScreen() {
       : null,
   );
 
-  if (!subscription || !initial) {
+  if (!initial) {
     return (
       <View style={[styles.missing, { backgroundColor: colors.background }]}>
         <EmptyState icon="alert-circle-outline" title={t('details.notFound')} />
@@ -49,16 +50,34 @@ export default function EditSubscriptionScreen() {
     );
   }
 
+  const confirmDelete = () =>
+    Alert.alert(t('details.deleteTitle', { name: subscription?.name ?? initial.name }), t('details.deleteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: () => {
+          remove(id)
+            // Closes this form and the details screen under it.
+            .then(() => router.dismiss(2))
+            .catch(() => Alert.alert(t('details.actionError')));
+        },
+      },
+    ]);
+
+  // The form stays on screen while it closes after a delete, so it never flashes "not found".
   return (
     <SubscriptionForm
       mode="edit"
       initial={initial}
       onSubmit={async (input, { dateChanged }) => {
+        if (!subscription) throw new Error('Subscription no longer exists');
         // Re-anchoring on an unchanged date would lose a month-end anchor
         // (Jan 31 → next shown Feb 28 → later renewals on the 28th).
         const keepAnchor = !dateChanged && input.interval === subscription.interval;
         await update(subscription.id, keepAnchor ? { ...input, anchorDate: subscription.anchorDate } : input);
       }}
+      onDelete={confirmDelete}
     />
   );
 }

@@ -41,6 +41,11 @@ export const SERVICE_PRESETS: readonly ServicePreset[] = [
   { name: 'EPCG', category: 'utilities', interval: 'monthly', url: 'epcg.com' },
 ];
 
+/** Presets with these exact names, in the given order; unknown names are skipped. */
+export function findPresets(names: readonly string[]): ServicePreset[] {
+  return names.flatMap((name) => SERVICE_PRESETS.find((preset) => preset.name === name) ?? []);
+}
+
 /** Presets matching a partially typed name; the first few when nothing is typed. */
 export function matchPresets(query: string, limit = 8): ServicePreset[] {
   const normalized = query.trim().toLocaleLowerCase();

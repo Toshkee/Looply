@@ -4,29 +4,37 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SelectSheet } from '@/components/SelectSheet';
+import { SubscriptionAvatar } from '@/components/SubscriptionAvatar';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { CURRENCY_CODES, type CurrencyCode } from '@/domain/currency';
+import { SERVICE_PRESETS } from '@/domain/presets';
+import { FREE_SUBSCRIPTION_LIMIT } from '@/domain/pro';
 import { changeAppLanguage, currentLanguage } from '@/i18n';
 import { APP_LANGUAGES, LANGUAGE_NATIVE_NAMES, type AppLanguage } from '@/i18n/languages';
 import { haptics } from '@/services/haptics';
+import { useIsPro } from '@/state/pro';
 import { useSettingsStore } from '@/state/settingsStore';
+import { queueFirstSubscriptions } from '@/state/setupQueue';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GUTTER, radius, spacing } from '@/theme/tokens';
 
-const TOTAL_STEPS = 2;
+const TOTAL_STEPS = 3;
 
 export default function OnboardingScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const update = useSettingsStore((s) => s.update);
+  const isPro = useIsPro();
   const [step, setStep] = useState(1);
   const [language, setLanguage] = useState<AppLanguage>(currentLanguage());
   const [currency, setCurrency] = useState<CurrencyCode>(useSettingsStore.getState().settings.currency);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [fade] = useState(() => new Animated.Value(1));
 
@@ -41,12 +49,21 @@ export default function OnboardingScreen() {
     changeAppLanguage(value).catch(() => undefined);
   };
 
+  const togglePreset = (name: string) => {
+    if (picked.includes(name)) setPicked(picked.filter((other) => other !== name));
+    // The free version holds a limited number, so no more can be picked than it can save.
+    else if (isPro || picked.length < FREE_SUBSCRIPTION_LIMIT) setPicked([...picked, name]);
+    else haptics.warning();
+  };
+
   const finish = async () => {
     setSaving(true);
     try {
+      queueFirstSubscriptions(picked);
       await update({ language, currency, onboardingCompleted: true });
       haptics.success();
     } catch {
+      queueFirstSubscriptions([]);
       setSaving(false);
     }
   };
@@ -115,7 +132,7 @@ export default function OnboardingScreen() {
                 </Card>
               </View>
             </>
-          ) : (
+          ) : step === 2 ? (
             <>
               <View style={styles.intro}>
                 <AppText variant="title" accessibilityRole="header">
@@ -160,6 +177,33 @@ export default function OnboardingScreen() {
                 </View>
               </Card>
             </>
+          ) : (
+            <>
+              <View style={styles.intro}>
+                <AppText variant="title" accessibilityRole="header">
+                  {t('onboarding.pickTitle')}
+                </AppText>
+                <AppText variant="body" tone="secondary">
+                  {t('onboarding.pickBody')}
+                </AppText>
+              </View>
+              <View style={styles.presets}>
+                {SERVICE_PRESETS.map((preset) => (
+                  <Chip
+                    key={preset.name}
+                    label={preset.name}
+                    selected={picked.includes(preset.name)}
+                    onPress={() => togglePreset(preset.name)}
+                    leading={<SubscriptionAvatar name={preset.name} category={preset.category} size={22} shape="circle" />}
+                  />
+                ))}
+              </View>
+              {!isPro ? (
+                <AppText variant="caption" tone="tertiary" style={styles.groupLabel}>
+                  {t('pro.featureUnlimitedBody', { limit: FREE_SUBSCRIPTION_LIMIT })}
+                </AppText>
+              ) : null}
+            </>
           )}
         </Animated.View>
       </ScrollView>
@@ -167,7 +211,13 @@ export default function OnboardingScreen() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
         {step > 1 ? <Button label={t('common.back')} variant="secondary" onPress={() => setStep(step - 1)} style={styles.backButton} /> : null}
         <Button
-          label={step < TOTAL_STEPS ? t('common.continue') : t('onboarding.start')}
+          label={
+            step < TOTAL_STEPS
+              ? t('common.continue')
+              : picked.length > 0
+                ? t('onboarding.addPicked', { count: picked.length })
+                : t('onboarding.start')
+          }
           onPress={() => (step < TOTAL_STEPS ? setStep(step + 1) : finish())}
           loading={saving}
           style={styles.primaryButton}
@@ -202,6 +252,7 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   currencyBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   privacy: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   privacyIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   privacyText: { flex: 1, gap: spacing.xs },

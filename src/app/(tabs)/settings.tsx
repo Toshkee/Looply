@@ -1,14 +1,12 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { SelectSheet } from '@/components/SelectSheet';
-import { AppText } from '@/components/ui/AppText';
 import { ListRow, ListSection, SwitchRow } from '@/components/ui/ListRow';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { CURRENCY_CODES, type CurrencyCode } from '@/domain/currency';
 import { parseImport, planImport, type ImportFileError } from '@/domain/importData';
 import { FREE_SUBSCRIPTION_LIMIT } from '@/domain/pro';
@@ -25,9 +23,8 @@ import { resetAllData } from '@/state/bootstrap';
 import { relockProForTesting, restorePro, useIsPro } from '@/state/pro';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
-import { spacing } from '@/theme/tokens';
 
-type Sheet = 'language' | 'currency' | 'defaultReminder' | 'reminderTime' | null;
+type Sheet = 'language' | 'currency' | 'theme' | 'defaultReminder' | 'reminderTime' | null;
 
 const IMPORT_ERROR_KEYS = {
   invalidJson: 'settings.importInvalidFile',
@@ -53,6 +50,12 @@ export default function SettingsScreen() {
 
   const reminderLabel = (days: number | null) =>
     days === null ? t('reminder.off') : days === 0 ? t('reminder.sameDay') : t('reminder.daysBefore', { count: days });
+
+  const themeLabels: Record<ThemePreference, string> = {
+    light: t('settings.themeLight'),
+    dark: t('settings.themeDark'),
+    system: t('settings.themeSystem'),
+  };
 
   const permissionLabel = {
     granted: t('settings.permissionGranted'),
@@ -214,23 +217,8 @@ export default function SettingsScreen() {
           onPress={() => setSheet('language')}
         />
         <ListRow icon="cash-outline" title={t('settings.currency')} value={settings.currency} onPress={() => setSheet('currency')} />
+        <ListRow icon="contrast-outline" title={t('settings.theme')} value={themeLabels[settings.theme]} onPress={() => setSheet('theme')} />
       </ListSection>
-
-      <View style={styles.group}>
-        <AppText variant="label" tone="secondary" style={styles.groupLabel}>
-          {t('settings.theme')}
-        </AppText>
-        <SegmentedControl<ThemePreference>
-          accessibilityLabel={t('settings.theme')}
-          options={[
-            { value: 'light', label: t('settings.themeLight') },
-            { value: 'dark', label: t('settings.themeDark') },
-            { value: 'system', label: t('settings.themeSystem') },
-          ]}
-          value={settings.theme}
-          onChange={(theme) => save({ theme })}
-        />
-      </View>
 
       <ListSection
         title={t('settings.reminders')}
@@ -301,9 +289,18 @@ export default function SettingsScreen() {
         onClose={() => setSheet(null)}
         options={CURRENCY_CODES.map((code) => ({ value: code, label: t(`currencyName.${code}`), detail: code }))}
       />
+      <SelectSheet<ThemePreference>
+        visible={sheet === 'theme'}
+        title={t('settings.theme')}
+        closeLabel={t('common.close')}
+        value={settings.theme}
+        onSelect={(theme) => save({ theme })}
+        onClose={() => setSheet(null)}
+        options={(['light', 'dark', 'system'] as const).map((theme) => ({ value: theme, label: themeLabels[theme] }))}
+      />
       <SelectSheet<string>
         visible={sheet === 'defaultReminder'}
-        title={t('settings.defaultReminder')}
+        title={t('settings.defaultReminderTitle')}
         closeLabel={t('common.close')}
         value={String(settings.defaultReminderDays)}
         onSelect={(value) => save({ defaultReminderDays: value === 'null' ? null : Number(value) })}
@@ -322,8 +319,3 @@ export default function SettingsScreen() {
     </ScreenScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  group: { gap: spacing.sm },
-  groupLabel: { marginLeft: spacing.xs },
-});

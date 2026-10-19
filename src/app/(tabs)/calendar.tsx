@@ -13,6 +13,7 @@ import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { isBillable, scheduledPayments, sumPaymentsByCurrency, type ScheduledPayment } from '@/domain/billing';
 import { addDays, endOfMonth, startOfMonth, type ISODate } from '@/domain/calendarDate';
+import { activeCurrencies, scheduledMonthTotals } from '@/domain/insights';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
 import { useIsPro } from '@/state/pro';
@@ -24,9 +25,28 @@ const LIST_DAYS = 90;
 type Mode = 'list' | 'month';
 
 export default function CalendarScreen() {
-  const { t } = useTranslation();
   const isPro = useIsPro();
-  return isPro ? <Calendar /> : <ProLockedScreen title={t('calendar.title')} feature="calendar" />;
+  return isPro ? <Calendar /> : <LockedCalendar />;
+}
+
+/** The free version sees its own month totals: this month in full, the next ones hidden. */
+function LockedCalendar() {
+  const { t } = useTranslation();
+  const format = useFormatters();
+  const today = useToday();
+  const subscriptions = useSubscriptionStore((s) => s.subscriptions);
+  const preferred = useSettingsStore((s) => s.settings.currency);
+  const teaser = useMemo(() => {
+    const currency = activeCurrencies(subscriptions, preferred)[0];
+    if (!currency) return [];
+    return scheduledMonthTotals(subscriptions, currency, today, 3).map((total) => ({
+      key: total.month,
+      label: format.monthYear(total.month),
+      value: format.money(total.amountMinor, currency),
+      detail: t('counts.payments', { count: total.count }),
+    }));
+  }, [subscriptions, preferred, today, format, t]);
+  return <ProLockedScreen title={t('calendar.title')} feature="calendar" teaserTitle={t('pro.teaserCalendar')} teaser={teaser} />;
 }
 
 function Calendar() {

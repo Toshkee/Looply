@@ -1,16 +1,16 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AvatarCluster } from '@/components/AvatarCluster';
 import { CategoryBars } from '@/components/CategoryBars';
 import { AppText } from '@/components/ui/AppText';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { ScreenScroll } from '@/components/ui/ScreenScroll';
 import { UpcomingCard } from '@/components/UpcomingCard';
 import { isBillable, nextPayment, scheduledPayments, sumPaymentsByCurrency, totalsByCurrency } from '@/domain/billing';
@@ -20,6 +20,7 @@ import { useAddSubscription } from '@/hooks/useAddSubscription';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useToday } from '@/hooks/useToday';
 import { useSettingsStore } from '@/state/settingsStore';
+import { takeQueuedSubscriptions } from '@/state/setupQueue';
 import { useSubscriptionStore } from '@/state/subscriptionStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import { GUTTER, radius, spacing } from '@/theme/tokens';
@@ -28,12 +29,11 @@ const UPCOMING_DAYS = 30;
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
-  const { colors, scheme } = useTheme();
+  const { colors } = useTheme();
   const format = useFormatters();
   const today = useToday();
   const subscriptions = useSubscriptionStore((s) => s.subscriptions);
   const currency = useSettingsStore((s) => s.settings.currency);
-  const updateSettings = useSettingsStore((s) => s.update);
 
   const data = useMemo(() => {
     const totals = totalsByCurrency(subscriptions, currency);
@@ -53,17 +53,17 @@ export default function DashboardScreen() {
   const weekday = format.date(today, 'weekday');
   const addSubscription = useAddSubscription();
 
+  // Services picked in onboarding: open the form for each, one after another.
+  useEffect(() => {
+    const queued = takeQueuedSubscriptions();
+    if (queued.length > 0) router.push({ pathname: '/subscription/new', params: { presets: queued.join(',') } });
+  }, []);
+
   return (
     <ScreenScroll
       title={t('home.title')}
       eyebrow={weekday.charAt(0).toLocaleUpperCase() + weekday.slice(1)}
-      headerRight={
-        <IconButton
-          icon={scheme === 'dark' ? 'sunny-outline' : 'moon-outline'}
-          accessibilityLabel={scheme === 'dark' ? t('home.themeToLight') : t('home.themeToDark')}
-          onPress={() => updateSettings({ theme: scheme === 'dark' ? 'light' : 'dark' }).catch(() => undefined)}
-        />
-      }
+      headerRight={<IconButton icon="add" accessibilityLabel={t('a11y.addSubscription')} onPress={addSubscription} />}
     >
       {subscriptions.length === 0 ? (
         <Card>
@@ -78,45 +78,61 @@ export default function DashboardScreen() {
       ) : (
         <>
           <View style={styles.summaryRow}>
-            <Card style={styles.totalsCard}>
-              <View style={styles.labelRow}>
-                <Icon name="calendar-outline" size={18} color={colors.accent} />
-                <AppText variant="label" tone="secondary" numberOfLines={1} style={styles.flexShrink}>
-                  {t('home.monthlyLabel')}
+            <PressableScale
+              onPress={() => router.navigate('/insights')}
+              pressedScale={0.98}
+              accessibilityRole="link"
+              accessibilityLabel={`${t('home.monthlyLabel')}, ${format.money(data.primary.monthlyMinor, data.primary.currency)}, ${t('home.annualLabel')}, ${format.money(data.primary.annualMinor, data.primary.currency)}`}
+              style={styles.totalsCell}
+            >
+              <Card style={styles.totalsCard}>
+                <View style={styles.labelRow}>
+                  <Icon name="calendar-outline" size={18} color={colors.accent} />
+                  <AppText variant="label" tone="secondary" numberOfLines={1} style={styles.flexShrink}>
+                    {t('home.monthlyLabel')}
+                  </AppText>
+                  <View style={[styles.estimateTag, { backgroundColor: colors.surfaceMuted }]}>
+                    <AppText variant="micro" tone="secondary">
+                      {t('common.estimate')}
+                    </AppText>
+                  </View>
+                </View>
+                <AppText variant="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+                  {format.money(data.primary.monthlyMinor, data.primary.currency)}
                 </AppText>
-                <View style={[styles.estimateTag, { backgroundColor: colors.surfaceMuted }]}>
-                  <AppText variant="micro" tone="secondary">
-                    {t('common.estimate')}
+                <View style={[styles.divider, { backgroundColor: colors.separator }]} />
+                <View style={styles.labelRow}>
+                  <Icon name="repeat-outline" size={16} color={colors.textSecondary} />
+                  <AppText variant="label" tone="secondary">
+                    {t('home.annualLabel')}
                   </AppText>
                 </View>
-              </View>
-              <AppText variant="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
-                {format.money(data.primary.monthlyMinor, data.primary.currency)}
-              </AppText>
-              <View style={[styles.divider, { backgroundColor: colors.separator }]} />
-              <View style={styles.labelRow}>
-                <Icon name="repeat-outline" size={16} color={colors.textSecondary} />
-                <AppText variant="label" tone="secondary">
-                  {t('home.annualLabel')}
+                <AppText variant="amount" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={styles.annual}>
+                  {format.money(data.primary.annualMinor, data.primary.currency)}
                 </AppText>
-              </View>
-              <AppText variant="amount" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={styles.annual}>
-                {format.money(data.primary.annualMinor, data.primary.currency)}
-              </AppText>
-            </Card>
+              </Card>
+            </PressableScale>
 
-            <Card style={styles.activeCard}>
-              <AvatarCluster subscriptions={data.active} />
-              <View style={styles.activeRow} accessible accessibilityLabel={t('counts.activeSubscriptions', { count: data.active.length })}>
-                <AppText variant="title" style={styles.activeCount}>
-                  {data.active.length}
-                </AppText>
-                <AppText variant="callout" tone="secondary" numberOfLines={1} style={styles.flexShrink}>
-                  {t('home.activeLabel', { count: data.active.length })}
-                </AppText>
-                <View style={[styles.activeDot, { backgroundColor: colors.accent }]} />
-              </View>
-            </Card>
+            <PressableScale
+              onPress={() => router.navigate({ pathname: '/subscriptions', params: { status: 'active' } })}
+              pressedScale={0.98}
+              accessibilityRole="link"
+              accessibilityLabel={t('counts.activeSubscriptions', { count: data.active.length })}
+              style={styles.activeCell}
+            >
+              <Card style={styles.activeCard}>
+                <AvatarCluster subscriptions={data.active} />
+                <View style={styles.activeRow}>
+                  <AppText variant="title" style={styles.activeCount}>
+                    {data.active.length}
+                  </AppText>
+                  <AppText variant="callout" tone="secondary" numberOfLines={1} style={styles.flexShrink}>
+                    {t('home.activeLabel', { count: data.active.length })}
+                  </AppText>
+                  <View style={[styles.activeDot, { backgroundColor: colors.accent }]} />
+                </View>
+              </Card>
+            </PressableScale>
           </View>
 
           {data.otherTotals.length > 0 ? (
@@ -136,8 +152,6 @@ export default function DashboardScreen() {
               ))}
             </Card>
           ) : null}
-
-          <Button label={t('home.addSubscription')} icon="add" onPress={addSubscription} />
 
           {data.active.length === 0 ? (
             <Card>
@@ -212,7 +226,9 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'stretch' },
-  totalsCard: { flex: 1.3, gap: spacing.sm, paddingVertical: spacing.lg + 2 },
+  totalsCell: { flex: 1.3 },
+  activeCell: { flex: 1 },
+  totalsCard: { flex: 1, gap: spacing.sm, paddingVertical: spacing.lg + 2 },
   activeCard: { flex: 1, gap: spacing.sm, justifyContent: 'space-between', minHeight: 196 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm - 2 },
   flexShrink: { flexShrink: 1 },
