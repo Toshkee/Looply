@@ -17,7 +17,7 @@ export const SERVICE_PRESETS: readonly ServicePreset[] = [
   { name: 'Spotify', category: 'music', interval: 'monthly', url: 'spotify.com' },
   { name: 'YouTube Premium', category: 'entertainment', interval: 'monthly', url: 'youtube.com/premium' },
   { name: 'Crnogorski Telekom', category: 'telecom', interval: 'monthly', url: 'telekom.me' },
-  { name: 'One', category: 'telecom', interval: 'monthly', url: 'one.me' },
+  { name: 'One', category: 'telecom', interval: 'monthly', url: '1.me' },
   { name: 'm:tel', category: 'telecom', interval: 'monthly', url: 'mtel.me' },
   { name: 'iCloud+', category: 'cloud', interval: 'monthly', url: 'icloud.com' },
   { name: 'ChatGPT Plus', category: 'productivity', interval: 'monthly', url: 'chatgpt.com' },

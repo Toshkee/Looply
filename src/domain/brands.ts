@@ -2,8 +2,11 @@ import { BRAND_ICONS, type BrandIcon } from '@/assets/brandIcons.generated';
 
 export type { BrandIcon };
 
-/** Aliases shorter than this only match a whole first word ("EA Play", not "Easy"). */
-const SHORT_ALIAS_LENGTH = 5;
+/**
+ * Aliases shorter than this only match a whole first word or the whole name
+ * ("EA Play" but not "Easy", "Canva Pro" but not "Canvas", "m:tel").
+ */
+const SHORT_ALIAS_LENGTH = 6;
 
 /** Longest aliases first, so "YouTube Music" wins over "YouTube". */
 const ALIAS_INDEX = BRAND_ICONS.flatMap((icon) => icon.aliases.map((alias) => ({ alias, icon }))).sort(
@@ -32,7 +35,8 @@ export function findBrand(name: string): BrandIcon | null {
   let match: BrandIcon | null = null;
   if (compact !== '') {
     for (const { alias, icon } of ALIAS_INDEX) {
-      const matches = alias.length >= SHORT_ALIAS_LENGTH ? compact.startsWith(alias) : firstWord === alias;
+      const matches =
+        alias.length >= SHORT_ALIAS_LENGTH ? compact.startsWith(alias) : firstWord === alias || compact === alias;
       if (matches) {
         match = icon;
         break;

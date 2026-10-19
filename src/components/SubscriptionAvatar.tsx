@@ -24,8 +24,9 @@ export function monogram(name: string): string {
 }
 
 /**
- * The service's logo on its brand color when the name matches a bundled
- * brand; otherwise a monogram tinted by category.
+ * The service's logo (or, for brands without a free logo, its initial) on its
+ * brand color when the name matches a bundled brand; otherwise a monogram
+ * tinted by category.
  */
 export function SubscriptionAvatar({ name, category, size = 44, shape = 'rounded', solid = false }: SubscriptionAvatarProps) {
   const { scheme, colors } = useTheme();
@@ -46,7 +47,11 @@ export function SubscriptionAvatar({ name, category, size = 44, shape = 'rounded
           needsEdge && { borderWidth: 1, borderColor: colors.separator },
         ]}
       >
-        <BrandGlyph brand={brand} size={size * 0.5} color={glyphColorFor(brand.hex)} />
+        {brand.glyph ? (
+          <BrandGlyph glyph={brand.glyph} size={size * 0.5} color={glyphColorFor(brand.hex)} />
+        ) : (
+          <Initial name={name} size={size} color={glyphColorFor(brand.hex)} />
+        )}
       </View>
     );
   }
@@ -60,13 +65,16 @@ export function SubscriptionAvatar({ name, category, size = 44, shape = 'rounded
       importantForAccessibility="no-hide-descendants"
       style={[styles.tile, { width: size, height: size, borderRadius, backgroundColor: background }]}
     >
-      <AppText
-        style={{ color: letterColor, fontSize: size * 0.42, lineHeight: size * 0.52, fontWeight: '700' }}
-        maxFontSizeMultiplier={1}
-      >
-        {monogram(name)}
-      </AppText>
+      <Initial name={name} size={size} color={letterColor} />
     </View>
+  );
+}
+
+function Initial({ name, size, color }: { name: string; size: number; color: string }) {
+  return (
+    <AppText style={{ color, fontSize: size * 0.42, lineHeight: size * 0.52, fontWeight: '700' }} maxFontSizeMultiplier={1}>
+      {monogram(name)}
+    </AppText>
   );
 }
 

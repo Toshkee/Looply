@@ -1,5 +1,6 @@
 {
-  "$comment": "Simple Icons slug -> name aliases (lowercase, letters and digits only, '+' written as 'plus'). Aliases shorter than 5 characters only match a whole first word. Run `npm run brands` after editing.",
+  "$comment": "Aliases are lowercase letters and digits ('+' written as 'plus'). Aliases shorter than 6 characters only match a whole first word or the whole name. Run `npm run brands` after editing.",
+  "$brands": "Simple Icons slug -> aliases.",
   "brands": {
     "netflix": ["netflix"],
     "spotify": ["spotify"],
@@ -79,5 +80,22 @@
     "mullvad": ["mullvad"],
     "meta": ["metaverified"],
     "instagram": ["instagram"]
+  },
+  "$extraBrands": "Logos Simple Icons no longer carries, from scripts/brand-svgs (sources and licenses in LICENSES.md).",
+  "extraBrands": {
+    "openai": { "title": "OpenAI", "hex": "#000000", "aliases": ["chatgpt", "openai"] },
+    "amazon": { "title": "Amazon", "hex": "#00A8E1", "aliases": ["amazonprime", "primevideo", "amazon"] },
+    "microsoft": { "title": "Microsoft", "hex": "#0078D4", "aliases": ["microsoft", "office365"] },
+    "adobecreativecloud": { "title": "Adobe Creative Cloud", "hex": "#DA1F26", "aliases": ["adobe", "creativecloud"] },
+    "canva": { "title": "Canva", "hex": "#00C4CC", "aliases": ["canva"] },
+    "xbox": { "title": "Xbox", "hex": "#107C10", "aliases": ["xbox", "gamepass"] },
+    "nintendoswitch": { "title": "Nintendo Switch", "hex": "#E60012", "aliases": ["nintendo"] }
+  },
+  "$initialBrands": "Brands without a free vector logo: shown as their initial on the brand color.",
+  "initialBrands": {
+    "disneyplus": { "title": "Disney+", "hex": "#113CCF", "aliases": ["disneyplus", "disney"] },
+    "one": { "title": "One", "hex": "#00ACE7", "aliases": ["one", "onecg", "onemontenegro"] },
+    "mtel": { "title": "m:tel", "hex": "#ED1A3B", "aliases": ["mtel"] },
+    "epcg": { "title": "EPCG", "hex": "#003067", "aliases": ["epcg", "elektroprivreda"] }
   }
 }
